@@ -1,0 +1,68 @@
+"use client";
+
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import { dictionaries, dir, type Dictionary, type Lang } from "./dictionaries";
+
+const STORAGE_KEY = "bp_lang";
+
+type LanguageContextValue = {
+  lang: Lang;
+  setLang: (lang: Lang) => void;
+  toggle: () => void;
+  dir: "rtl" | "ltr";
+  t: Dictionary;
+};
+
+const LanguageContext = createContext<LanguageContextValue | null>(null);
+
+export function LanguageProvider({
+  children,
+  initialLang = "ar",
+}: {
+  children: ReactNode;
+  initialLang?: Lang;
+}) {
+  const [lang, setLangState] = useState<Lang>(initialLang);
+
+  // Restore saved preference on first client render.
+  useEffect(() => {
+    const saved = window.localStorage.getItem(STORAGE_KEY) as Lang | null;
+    if (saved === "ar" || saved === "en") setLangState(saved);
+  }, []);
+
+  // Keep <html lang/dir> in sync with the active language.
+  useEffect(() => {
+    const el = document.documentElement;
+    el.lang = lang;
+    el.dir = dir(lang);
+    window.localStorage.setItem(STORAGE_KEY, lang);
+  }, [lang]);
+
+  const value = useMemo<LanguageContextValue>(
+    () => ({
+      lang,
+      setLang: setLangState,
+      toggle: () => setLangState((prev) => (prev === "ar" ? "en" : "ar")),
+      dir: dir(lang),
+      t: dictionaries[lang],
+    }),
+    [lang],
+  );
+
+  return (
+    <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>
+  );
+}
+
+export function useLang() {
+  const ctx = useContext(LanguageContext);
+  if (!ctx) throw new Error("useLang must be used within a LanguageProvider");
+  return ctx;
+}
