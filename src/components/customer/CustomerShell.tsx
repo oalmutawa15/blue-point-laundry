@@ -56,7 +56,7 @@ export function CustomerShell({
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col bg-background">
+    <div className="mx-auto flex min-h-screen max-w-md flex-col bg-background shadow-xl">
       {/* Top bar */}
       <header className="sticky top-0 z-20 flex items-center justify-between gap-2 bg-brand px-4 py-3 text-brand-foreground">
         <Link href="/home" className="flex items-center gap-2">

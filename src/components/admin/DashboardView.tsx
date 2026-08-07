@@ -78,50 +78,33 @@ export function DashboardView({
   drivers,
   today,
   alerts,
-  topCustomers,
 }: {
   stats: AdminStats;
   costPct: number;
   drivers: DriverPerf[];
   today: TodayRow[];
   alerts: AlertItem[];
-  topCustomers: TopCustomer[];
 }) {
   const { t, lang } = useLang();
   const m = (f: number) => formatMoney(f, lang);
   const profit = (f: number) => f * (1 - costPct / 100);
-  const retention =
-    stats.total_customers > 0
-      ? Math.round((stats.returning_customers / stats.total_customers) * 100)
-      : 0;
-  const avgOrders =
-    stats.total_customers > 0
-      ? (stats.orders_total / stats.total_customers).toFixed(1)
-      : "0";
   const locale = lang === "ar" ? "ar-KW" : "en-GB";
 
+  // Trimmed to the essentials the owner needs at a glance.
   const kpis = [
     { label: t.admin.kpi.ordersToday, value: String(stats.orders_today) },
     { label: t.admin.kpi.completed, value: String(stats.completed_today), tone: "good" as const },
     { label: t.admin.kpi.pendingPickups, value: String(stats.pending_pickups) },
     { label: t.admin.kpi.cleaning, value: String(stats.cleaning) },
     { label: t.admin.kpi.readyDelivery, value: String(stats.ready_delivery) },
-    { label: t.admin.kpi.cancelled, value: String(stats.cancelled_total), tone: "warn" as const },
-    { label: t.admin.kpi.activeCustomers, value: String(stats.active_customers) },
-    { label: t.admin.kpi.totalDrivers, value: String(stats.total_drivers) },
     { label: t.admin.kpi.activeDrivers, value: String(stats.active_drivers) },
   ];
 
   const fin = [
     { label: t.admin.fin.revenueToday, value: m(stats.revenue_today) },
     { label: t.admin.fin.dailyProfit, value: m(profit(stats.revenue_today)), tone: "good" as const },
-    { label: t.admin.fin.revenueWeek, value: m(stats.revenue_week) },
     { label: t.admin.fin.revenueMonth, value: m(stats.revenue_month) },
-    { label: t.admin.fin.netProfitMonth, value: m(profit(stats.revenue_month)), tone: "good" as const },
-    { label: t.admin.fin.avgOrder, value: m(stats.avg_order_value) },
     { label: t.admin.fin.walletHeld, value: m(stats.wallet_held) },
-    { label: t.admin.fin.totalTopups, value: m(stats.total_topups) },
-    { label: t.admin.fin.totalDeductions, value: m(stats.total_deductions) },
   ];
 
   return (
@@ -177,30 +160,6 @@ export function DashboardView({
       </section>
 
       <RevenueChart data={stats.revenue_daily} costPct={costPct} />
-
-      {/* Customers */}
-      <section>
-        <h2 className="mb-2 text-sm font-bold text-muted-foreground">{t.admin.cust.title}</h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <StatCard label={t.admin.cust.newThisMonth} value={String(stats.new_customers_month)} />
-          <StatCard label={t.admin.cust.returning} value={String(stats.returning_customers)} />
-          <StatCard label={t.admin.cust.avgOrders} value={avgOrders} />
-          <StatCard label={t.admin.cust.retention} value={`${retention}%`} />
-        </div>
-        {topCustomers.length > 0 && (
-          <div className="mt-3 rounded-2xl bg-card p-4 shadow-sm">
-            <p className="mb-2 text-sm font-bold">{t.admin.cust.mostActive}</p>
-            <div className="divide-y divide-border">
-              {topCustomers.map((c) => (
-                <div key={c.id} className="flex items-center justify-between py-2 text-sm">
-                  <span>{c.name}</span>
-                  <span className="tabular-nums text-muted-foreground">{c.count} {t.admin.cust.orders}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </section>
 
       {/* Driver performance */}
       <section>

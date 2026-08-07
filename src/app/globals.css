@@ -48,7 +48,9 @@
 }
 
 body {
-  background: var(--background);
+  /* Page backdrop is slightly deeper than the app surface so the centered
+     mobile-first column reads as a framed app on tablet/desktop. */
+  background: #e7edf5;
   color: var(--foreground);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;

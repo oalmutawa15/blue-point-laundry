@@ -5,7 +5,6 @@ import {
   type DriverPerf,
   type TodayRow,
   type AlertItem,
-  type TopCustomer,
 } from "@/components/admin/DashboardView";
 import type { OrderStatus } from "@/types/database";
 
@@ -104,19 +103,6 @@ export default async function AdminDashboard() {
     }
   }
 
-  // Top customers by order count
-  const counts = new Map<string, { name: string; count: number }>();
-  for (const o of orders) {
-    const name = o.customer?.full_name || o.customer?.phone || "—";
-    const cur = counts.get(o.customer_id) ?? { name, count: 0 };
-    cur.count += 1;
-    counts.set(o.customer_id, cur);
-  }
-  const topCustomers: TopCustomer[] = [...counts.entries()]
-    .map(([id, v]) => ({ id, name: v.name, count: v.count }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 5);
-
   return (
     <DashboardView
       stats={stats}
@@ -124,7 +110,6 @@ export default async function AdminDashboard() {
       drivers={drivers}
       today={todayRows}
       alerts={alerts.slice(0, 12)}
-      topCustomers={topCustomers}
     />
   );
 }

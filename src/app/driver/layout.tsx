@@ -15,7 +15,7 @@ export default async function DriverLayout({
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-xl bg-background">
+    <div className="mx-auto min-h-screen max-w-xl bg-background shadow-xl">
       <StaffTopBar area="driver" home="/driver" />
       <main className="px-4 py-5">{children}</main>
     </div>
