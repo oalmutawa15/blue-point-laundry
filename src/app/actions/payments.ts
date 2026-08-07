@@ -1,13 +1,21 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { findPackage } from "@/lib/packages";
+import { emailForPhone } from "@/lib/auth";
+import { upaymentsCreateCharge } from "@/lib/upayments";
 
-// Start a top-up for a prepaid package. Mirrors UPayments createCharge: creates a
-// pending payment (charged = deposit, credit = deposit + bonus) and returns a
-// checkout URL to redirect the customer to. (Mock = our own page.)
+async function siteOrigin(): Promise<string> {
+  const h = await headers();
+  const host = h.get("host") ?? "localhost:3000";
+  const proto = h.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
+  return `${proto}://${host}`;
+}
+
+// Start a real UPayments charge for a prepaid package and return the hosted
+// payment page URL to redirect the customer to.
 export async function createTopUp(
   depositFils: number,
 ): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
@@ -20,65 +28,45 @@ export async function createTopUp(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "unauthorized" };
 
-  const { data, error } = await supabase
+  const { data: prof } = await supabase
+    .from("profiles")
+    .select("phone, full_name")
+    .eq("id", user.id)
+    .single();
+
+  const { data: payment, error } = await supabase
     .from("payments")
     .insert({
       customer_id: user.id,
       amount_fils: pkg.deposit,
       credit_fils: pkg.credit,
       status: "pending",
-      provider: "upayments_mock",
+      provider: "upayments",
     })
     .select("id")
     .single();
-
   if (error) return { ok: false, error: error.message };
-  return { ok: true, url: `/pay/mock/${data.id}` };
-}
 
-// Simulates the UPayments callback/webhook: marks the payment paid or failed,
-// and credits the wallet on success (via the service_role-only wallet_topup RPC).
-export async function confirmMockPayment(
-  paymentId: string,
-  outcome: "success" | "fail",
-): Promise<{ ok: boolean }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false };
-
-  const admin = createAdminClient();
-  const { data: payment } = await admin
-    .from("payments")
-    .select("*")
-    .eq("id", paymentId)
-    .single();
-
-  // Only the owner can confirm, and only a still-pending payment.
-  if (!payment || payment.customer_id !== user.id || payment.status !== "pending") {
-    return { ok: false };
-  }
-
-  if (outcome === "fail") {
-    await admin.from("payments").update({ status: "failed" }).eq("id", paymentId);
-    return { ok: true };
-  }
-
-  await admin
-    .from("payments")
-    .update({ status: "paid", paid_at: new Date().toISOString() })
-    .eq("id", paymentId);
-
-  // Credit the wallet with the package amount (deposit + bonus), falling back to
-  // the charged amount for any legacy payment without a credit amount.
-  await admin.rpc("wallet_topup", {
-    p_customer: payment.customer_id,
-    p_amount: payment.credit_fils ?? payment.amount_fils,
-    p_reference: payment.id,
-    p_note: "UPayments top-up",
+  const base = await siteOrigin();
+  const charge = await upaymentsCreateCharge({
+    amountKwd: pkg.deposit / 1000,
+    paymentId: payment.id,
+    customer: {
+      id: user.id,
+      name: prof?.full_name || "Blue Point Customer",
+      email: emailForPhone(prof?.phone || "+96500000000"),
+      mobile: (prof?.phone || "").replace(/\D/g, ""),
+    },
+    returnUrl: `${base}/pay/upayments/return?payment=${payment.id}`,
+    cancelUrl: `${base}/credit?topup=failed`,
+    notificationUrl: `${base}/api/upayments/webhook?payment=${payment.id}`,
   });
 
-  revalidatePath("/credit");
-  return { ok: true };
+  const admin = createAdminClient();
+  if (!charge.ok) {
+    await admin.from("payments").update({ status: "failed" }).eq("id", payment.id);
+    return { ok: false, error: charge.error };
+  }
+  await admin.from("payments").update({ provider_ref: charge.trackId }).eq("id", payment.id);
+  return { ok: true, url: charge.link };
 }

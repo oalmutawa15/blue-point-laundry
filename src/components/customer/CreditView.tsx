@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useLang } from "@/lib/i18n/LanguageProvider";
 import { formatMoney } from "@/lib/money";
 import { createTopUp } from "@/app/actions/payments";
@@ -18,19 +17,22 @@ export function CreditView({
   topupStatus: "success" | "failed" | null;
 }) {
   const { t, lang } = useLang();
-  const router = useRouter();
   const locale = lang === "ar" ? "ar-KW" : "en-GB";
   const [selected, setSelected] = useState<number>(CREDIT_PACKAGES[0].deposit);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function topUp() {
     setBusy(true);
+    setError(null);
     const res = await createTopUp(selected);
     if (!res.ok) {
       setBusy(false);
+      setError(t.credit.topUpFailed);
       return;
     }
-    router.push(res.url);
+    // External redirect to the UPayments hosted payment page.
+    window.location.href = res.url;
   }
 
   return (
@@ -93,8 +95,9 @@ export function CreditView({
           disabled={busy}
           className="mt-4 w-full rounded-xl bg-brand px-4 py-3.5 text-base font-bold text-brand-foreground transition-colors hover:bg-brand-600 disabled:opacity-50"
         >
-          {busy ? t.common.loading : t.credit.payWith}
+          {busy ? t.credit.processing : t.credit.payWith}
         </button>
+        {error && <p className="mt-2 text-sm text-danger">{error}</p>}
       </div>
 
       {/* History */}
