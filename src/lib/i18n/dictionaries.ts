@@ -92,6 +92,7 @@ export const dictionaries = {
       processing: "جارٍ معالجة الدفع…",
       topUpSuccess: "تم شحن الرصيد بنجاح",
       topUpFailed: "فشلت عملية الدفع",
+      topUpPending: "جارٍ تأكيد الدفع، سيتم تحديث رصيدك خلال لحظات",
     },
 
     addresses: {
@@ -117,6 +118,8 @@ export const dictionaries = {
       verify: "تأكيد",
       otpSent: "تم إرسال الرمز",
       otpInvalid: "رمز غير صحيح أو منتهي",
+      otpSentWhatsApp: "أرسلنا رمز التحقق إلى واتساب رقمك المسجّل",
+      otpSendFailed: "تعذّر إرسال رمز التحقق، حاول مرة أخرى",
       devHint: "وضع تجريبي: الرمز هو",
       selectArea: "اختر المنطقة",
       choose: "اختر",
@@ -408,6 +411,7 @@ export const dictionaries = {
       processing: "Processing payment…",
       topUpSuccess: "Credit added successfully",
       topUpFailed: "Payment failed",
+      topUpPending: "Confirming your payment — your balance will update shortly",
     },
 
     addresses: {
@@ -433,6 +437,8 @@ export const dictionaries = {
       verify: "Verify",
       otpSent: "Code sent",
       otpInvalid: "Invalid or expired code",
+      otpSentWhatsApp: "We sent the code to your registered WhatsApp number",
+      otpSendFailed: "Couldn't send the code, please try again",
       devHint: "Test mode: your code is",
       selectArea: "Select area",
       choose: "Choose",

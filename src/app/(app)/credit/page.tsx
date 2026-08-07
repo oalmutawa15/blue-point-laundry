@@ -17,7 +17,13 @@ export default async function CreditPage({
     .limit(50);
 
   const topupStatus =
-    topup === "success" ? "success" : topup === "failed" ? "failed" : null;
+    topup === "success"
+      ? "success"
+      : topup === "failed"
+        ? "failed"
+        : topup === "pending"
+          ? "pending"
+          : null;
 
   return (
     <CreditView

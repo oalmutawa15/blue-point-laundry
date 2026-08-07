@@ -38,6 +38,7 @@ export function AddressForm({ onDone }: { onDone: () => void }) {
   const [otpStage, setOtpStage] = useState(false);
   const [code, setCode] = useState("");
   const [devCode, setDevCode] = useState<string | null>(null);
+  const [sentToWhatsApp, setSentToWhatsApp] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -106,9 +107,18 @@ export function AddressForm({ onDone }: { onDone: () => void }) {
     setBusy(true);
     const res = await requestAddressOtp();
     setBusy(false);
-    if (!res.ok) return setError(res.error);
+    if (!res.ok) {
+      return setError(
+        res.error === "otp_send_failed"
+          ? t.addresses.otpSendFailed
+          : res.error === "no_phone"
+            ? t.addresses.otpSendFailed
+            : res.error,
+      );
+    }
     setOtpStage(true);
     setDevCode(res.devCode ?? null);
+    setSentToWhatsApp(res.sent === true);
   }
 
   async function save() {
@@ -140,7 +150,9 @@ export function AddressForm({ onDone }: { onDone: () => void }) {
   if (otpStage) {
     return (
       <div className="space-y-3">
-        <p className="text-sm text-muted-foreground">{t.addresses.otpDesc}</p>
+        <p className="text-sm text-muted-foreground">
+          {sentToWhatsApp ? t.addresses.otpSentWhatsApp : t.addresses.otpDesc}
+        </p>
         {devCode && (
           <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
             {t.addresses.devHint}: <span className="font-bold tabular-nums">{devCode}</span>

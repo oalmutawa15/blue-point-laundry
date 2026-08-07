@@ -4,6 +4,8 @@ import { randomInt } from "crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sendWhatsApp } from "@/lib/whatsapp";
+import { isTestPhone } from "@/lib/testPhones";
 
 export type AddressInput = {
   label?: string;
@@ -18,15 +20,24 @@ export type AddressInput = {
   lng?: number;
 };
 
-// Send an OTP to add/change an address. Mock: returns the code for now (no SMS yet).
+// Send an OTP to add/change an address. Real numbers get the code by WhatsApp;
+// the seeded test/demo numbers keep the on-screen code so the app stays testable
+// without a live messaging channel.
 export async function requestAddressOtp(): Promise<
-  { ok: true; devCode?: string } | { ok: false; error: string }
+  { ok: true; devCode?: string; sent?: boolean } | { ok: false; error: string }
 > {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "unauthorized" };
+
+  const { data: prof } = await supabase
+    .from("profiles")
+    .select("phone")
+    .eq("id", user.id)
+    .single();
+  const phone = prof?.phone ?? null;
 
   const code = String(randomInt(1000, 10000));
   const admin = createAdminClient();
@@ -36,8 +47,20 @@ export async function requestAddressOtp(): Promise<
     .insert({ customer_id: user.id, code, purpose: "address", expires_at });
   if (error) return { ok: false, error: error.message };
 
-  // TODO: send `code` by SMS in production. For now we surface it for testing.
-  return { ok: true, devCode: code };
+  // Test/demo numbers: keep the code on screen, don't message a real phone.
+  if (isTestPhone(phone)) {
+    return { ok: true, devCode: code };
+  }
+
+  // Real customer → send the code to their WhatsApp. Never leak it to the client.
+  if (!phone) return { ok: false, error: "no_phone" };
+  const body =
+    `Blue Point — address verification code: ${code}\n` +
+    `مصبغة بلو بوينت — رمز تأكيد العنوان: ${code}\n` +
+    `(valid 5 min / صالح ٥ دقائق)`;
+  const wa = await sendWhatsApp(phone, body);
+  if (!wa.ok) return { ok: false, error: "otp_send_failed" };
+  return { ok: true, sent: true };
 }
 
 export async function addAddress(

@@ -84,7 +84,13 @@ export async function upaymentsCreateCharge(
   }
 }
 
-async function upaymentsIsCaptured(idOrSession: string): Promise<boolean> {
+type PaymentState = "paid" | "failed" | "pending";
+
+// Ask UPayments for the real transaction state. Crucially this distinguishes a
+// *definitive* failure from "not captured yet" — capture often lags the browser
+// redirect by a second or two, and treating that gap as a failure was showing
+// customers "Payment failed" while the webhook credited them moments later.
+async function upaymentsPaymentState(idOrSession: string): Promise<PaymentState> {
   const urls = [
     `${BASE}/get-payment-status/${encodeURIComponent(idOrSession)}`,
     `${BASE}/get-payment-status?session_id=${encodeURIComponent(idOrSession)}`,
@@ -98,22 +104,35 @@ async function upaymentsIsCaptured(idOrSession: string): Promise<boolean> {
         data?: { transaction?: { result?: string; status?: string } };
       };
       const tx = json.data?.transaction;
-      if (tx) {
-        return (
-          tx.result === "CAPTURED" || tx.status === "done" || tx.status === "success"
-        );
+      if (!tx) continue;
+      const result = (tx.result ?? "").toUpperCase();
+      const status = (tx.status ?? "").toLowerCase();
+
+      if (result === "CAPTURED" || ["success", "done", "captured", "paid"].includes(status)) {
+        return "paid";
       }
+      if (
+        result.startsWith("NOT") ||
+        result.includes("FAIL") ||
+        result.includes("DECLIN") ||
+        ["failed", "declined", "canceled", "cancelled", "error", "expired"].includes(status)
+      ) {
+        return "failed";
+      }
+      return "pending";
     } catch {
       // try next form
     }
   }
-  return false;
+  return "pending";
 }
 
-// Idempotently finalize a payment: verify with UPayments, then credit the wallet once.
+// Idempotently finalize a payment: verify with UPayments, then credit the wallet
+// once. Crediting is idempotent at the DB level (unique reference), so it is safe
+// for the browser-return and the webhook to both call this for the same payment.
 export async function finalizeUpayments(
   paymentId: string,
-): Promise<"paid" | "failed" | "already"> {
+): Promise<"paid" | "failed" | "already" | "pending"> {
   const admin = createAdminClient();
   const { data: payment } = await admin
     .from("payments")
@@ -122,16 +141,17 @@ export async function finalizeUpayments(
     .single();
   if (!payment) return "failed";
   if (payment.status === "paid") return "already";
-  if (!payment.provider_ref) return "failed";
+  // No provider reference yet → nothing to verify; leave it pending.
+  if (!payment.provider_ref) return "pending";
 
-  let captured = false;
+  let state: PaymentState = "pending";
   try {
-    captured = await upaymentsIsCaptured(payment.provider_ref);
+    state = await upaymentsPaymentState(payment.provider_ref);
   } catch {
-    captured = false;
+    state = "pending";
   }
 
-  if (captured) {
+  if (state === "paid") {
     await admin
       .from("payments")
       .update({ status: "paid", paid_at: new Date().toISOString() })
@@ -144,6 +164,10 @@ export async function finalizeUpayments(
     });
     return "paid";
   }
-  await admin.from("payments").update({ status: "failed" }).eq("id", paymentId);
-  return "failed";
+  if (state === "failed") {
+    await admin.from("payments").update({ status: "failed" }).eq("id", paymentId);
+    return "failed";
+  }
+  // Still processing — don't mark it failed; the webhook (or a retry) will settle it.
+  return "pending";
 }

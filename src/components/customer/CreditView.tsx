@@ -14,7 +14,7 @@ export function CreditView({
 }: {
   balanceFils: number;
   transactions: Tables<"credit_transactions">[];
-  topupStatus: "success" | "failed" | null;
+  topupStatus: "success" | "failed" | "pending" | null;
 }) {
   const { t, lang } = useLang();
   const locale = lang === "ar" ? "ar-KW" : "en-GB";
@@ -44,10 +44,16 @@ export function CreditView({
           className={`rounded-xl px-4 py-3 text-sm font-semibold ${
             topupStatus === "success"
               ? "bg-success/10 text-success"
-              : "bg-danger/10 text-danger"
+              : topupStatus === "pending"
+                ? "bg-brand/10 text-brand"
+                : "bg-danger/10 text-danger"
           }`}
         >
-          {topupStatus === "success" ? t.credit.topUpSuccess : t.credit.topUpFailed}
+          {topupStatus === "success"
+            ? t.credit.topUpSuccess
+            : topupStatus === "pending"
+              ? t.credit.topUpPending
+              : t.credit.topUpFailed}
         </div>
       )}
 
