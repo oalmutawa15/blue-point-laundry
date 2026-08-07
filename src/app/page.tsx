@@ -1,12 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLang } from "@/lib/i18n/LanguageProvider";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { isValidKwPhone } from "@/lib/phone";
-import { signInWithPhone } from "@/app/actions/auth";
+import { signInWithPhone, phoneNeedsPassword } from "@/app/actions/auth";
 
 export default function LoginPage() {
   const { t, dir } = useLang();
@@ -19,6 +19,25 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
 
   const valid = isValidKwPhone(phone);
+
+  // As soon as a full, valid number is typed, ask the server whether it's a
+  // staff/admin/driver account. If so, reveal the password field right away —
+  // customers never see it. Debounced so we don't check on every keystroke.
+  useEffect(() => {
+    if (!valid) {
+      setNeedsPassword(false);
+      return;
+    }
+    let active = true;
+    const timer = setTimeout(async () => {
+      const staff = await phoneNeedsPassword(phone);
+      if (active) setNeedsPassword(staff);
+    }, 400);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [phone, valid]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();

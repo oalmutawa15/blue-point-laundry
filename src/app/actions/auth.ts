@@ -66,6 +66,21 @@ export async function signInWithPhone(
   return { ok: true, redirect: roleHomePath(role) };
 }
 
+// Lightweight check used by the login screen: does this number belong to a
+// staff/admin/driver account (which needs a password)? Customers → false, so
+// the password field only appears for the three staff roles.
+export async function phoneNeedsPassword(phoneInput: string): Promise<boolean> {
+  const norm = normalizeKwPhone(phoneInput);
+  if (!norm) return false;
+  const admin = createAdminClient();
+  const { data: check } = await admin.rpc("check_staff_login", {
+    p_phone: norm.e164,
+    p_password: "",
+  });
+  const gate = Array.isArray(check) ? check[0] : check;
+  return Boolean(gate?.needs_password);
+}
+
 export async function signOut(): Promise<void> {
   const supabase = await createClient();
   await supabase.auth.signOut();
