@@ -65,6 +65,9 @@ export async function upaymentsCreateCharge(
       data?: { link?: string; trackId?: string; track_id?: string };
     };
     if (!res.ok || !json.status) {
+      console.error(
+        `[upayments charge failed] base=${BASE} http=${res.status} resp=${JSON.stringify(json)}`,
+      );
       return { ok: false, error: json.message || `http_${res.status}` };
     }
     const link = json.data?.link;

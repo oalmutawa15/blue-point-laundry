@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { DriverJobList } from "@/components/driver/DriverJobList";
 import type { OrderWithRelations } from "@/lib/orderTypes";
@@ -10,18 +11,19 @@ export default async function DriverDashboard() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  if (!user) redirect("/");
 
   const [pickupsRes, deliveriesRes] = await Promise.all([
     supabase
       .from("orders")
       .select(SELECT)
-      .eq("pickup_driver_id", user!.id)
+      .eq("pickup_driver_id", user.id)
       .eq("status", "pickup_assigned")
       .order("created_at", { ascending: false }),
     supabase
       .from("orders")
       .select(SELECT)
-      .eq("delivery_driver_id", user!.id)
+      .eq("delivery_driver_id", user.id)
       .eq("status", "out_for_delivery")
       .order("created_at", { ascending: false }),
   ]);
