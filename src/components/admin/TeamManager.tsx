@@ -3,7 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLang } from "@/lib/i18n/LanguageProvider";
-import { addTeamMember, setMemberRole, removeMember } from "@/app/actions/admin";
+import {
+  addTeamMember,
+  setMemberRole,
+  removeMember,
+  setMemberPassword,
+} from "@/app/actions/admin";
 import type { Tables, UserRole } from "@/types/database";
 
 const ROLES: UserRole[] = ["shop", "driver", "admin"];
@@ -19,6 +24,7 @@ export function TeamManager({
   const router = useRouter();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [pw, setPw] = useState("");
   const [role, setRole] = useState<UserRole>("driver");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,14 +32,21 @@ export function TeamManager({
   async function add() {
     setError(null);
     setBusy(true);
-    const res = await addTeamMember(phone, name, role);
+    const res = await addTeamMember(phone, name, role, pw);
     setBusy(false);
     if (!res.ok) {
-      setError(res.error === "invalid_phone" ? t.login.invalidPhone : res.error);
+      setError(
+        res.error === "invalid_phone"
+          ? t.login.invalidPhone
+          : res.error === "weak_password"
+            ? t.admin.team.weakPassword
+            : res.error,
+      );
       return;
     }
     setName("");
     setPhone("");
+    setPw("");
     router.refresh();
   }
 
@@ -44,12 +57,12 @@ export function TeamManager({
       {/* Add member */}
       <div className="rounded-2xl bg-card p-4 shadow-sm">
         <p className="mb-3 font-bold">{t.admin.team.add}</p>
-        <div className="grid gap-3 sm:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-5">
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={t.admin.team.name}
-            className="rounded-lg border border-border bg-white px-3 py-2.5 text-sm outline-none focus:border-brand sm:col-span-1"
+            className="rounded-lg border border-border bg-white px-3 py-2.5 text-sm outline-none focus:border-brand"
           />
           <input
             value={phone}
@@ -57,6 +70,13 @@ export function TeamManager({
             placeholder={t.admin.team.phone}
             inputMode="numeric"
             dir="ltr"
+            className="rounded-lg border border-border bg-white px-3 py-2.5 text-sm outline-none focus:border-brand"
+          />
+          <input
+            value={pw}
+            onChange={(e) => setPw(e.target.value)}
+            placeholder={t.login.password}
+            type="text"
             className="rounded-lg border border-border bg-white px-3 py-2.5 text-sm outline-none focus:border-brand"
           />
           <select
@@ -70,7 +90,7 @@ export function TeamManager({
           </select>
           <button
             onClick={add}
-            disabled={busy || !name || phone.length < 8}
+            disabled={busy || !name || phone.length < 8 || pw.length < 4}
             className="rounded-lg bg-brand px-4 py-2.5 text-sm font-bold text-brand-foreground disabled:opacity-50"
           >
             {busy ? t.common.loading : t.admin.team.addMember}
@@ -100,6 +120,21 @@ export function TeamManager({
                 <option key={r} value={r}>{t.admin.roles[r]}</option>
               ))}
             </select>
+            <button
+              onClick={async () => {
+                const np = prompt(t.admin.team.newPassword);
+                if (!np) return;
+                const res = await setMemberPassword(mDone.id, np);
+                if (!res.ok) {
+                  alert(res.error === "weak_password" ? t.admin.team.weakPassword : res.error);
+                } else {
+                  router.refresh();
+                }
+              }}
+              className="text-sm font-semibold text-brand"
+            >
+              {t.admin.team.resetPassword}
+            </button>
             {mDone.id !== currentUserId && (
               <button
                 onClick={async () => {

@@ -23,27 +23,53 @@ export async function addTeamMember(
   phone: string,
   name: string,
   role: UserRole,
+  password: string,
 ): Promise<Ok> {
   const me = await requireAdmin();
   const norm = normalizeKwPhone(phone);
   if (!norm) return { ok: false, error: "invalid_phone" };
   if (!["shop", "driver", "admin"].includes(role)) return { ok: false, error: "bad_role" };
+  if (!password || password.length < 4) return { ok: false, error: "weak_password" };
 
   const admin = createAdminClient();
-  const { error } = await admin.auth.admin.createUser({
+  const created = await admin.auth.admin.createUser({
     email: emailForPhone(norm.e164),
     password: passwordForPhone(norm.e164),
     email_confirm: true,
     user_metadata: { phone: norm.e164, full_name: name, role },
   });
-  if (error) {
-    if (!/already|exists|registered/i.test(error.message)) {
-      return { ok: false, error: error.message };
+  let userId = created.data?.user?.id ?? null;
+  if (created.error) {
+    if (!/already|exists|registered/i.test(created.error.message)) {
+      return { ok: false, error: created.error.message };
     }
     // Existing account → promote/rename it.
     await admin.from("profiles").update({ role, full_name: name }).eq("phone", norm.e164);
+    const { data: prof } = await admin
+      .from("profiles")
+      .select("id")
+      .eq("phone", norm.e164)
+      .single();
+    userId = prof?.id ?? null;
   }
+  // Staff/admin/driver need a login password.
+  if (userId) await admin.rpc("set_login_password", { p_user: userId, p_password: password });
+
   await log(admin, me.id, "add_member", norm.e164, { role, name });
+  revalidatePath("/admin/team");
+  return { ok: true };
+}
+
+export async function setMemberPassword(userId: string, password: string): Promise<Ok> {
+  const me = await requireAdmin();
+  if (!password || password.length < 4) return { ok: false, error: "weak_password" };
+  const admin = createAdminClient();
+  const { error } = await admin.rpc("set_login_password", {
+    p_user: userId,
+    p_password: password,
+  });
+  if (error) return { ok: false, error: error.message };
+  await log(admin, me.id, "set_password", userId);
   revalidatePath("/admin/team");
   return { ok: true };
 }

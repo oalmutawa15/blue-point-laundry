@@ -11,9 +11,24 @@ type Result = { ok: true; redirect: string } | { ok: false; error: string };
 
 // Phone-only sign-in: no password or OTP for the user. We look up (or create)
 // the account behind the scenes and establish a real Supabase session.
-export async function signInWithPhone(phoneInput: string): Promise<Result> {
+export async function signInWithPhone(
+  phoneInput: string,
+  loginPassword?: string,
+): Promise<Result> {
   const norm = normalizeKwPhone(phoneInput);
   if (!norm) return { ok: false, error: "invalid_phone" };
+
+  const admin = createAdminClient();
+
+  // Staff/admin/driver accounts require a password; customers don't.
+  const { data: check } = await admin.rpc("check_staff_login", {
+    p_phone: norm.e164,
+    p_password: loginPassword ?? "",
+  });
+  const gate = Array.isArray(check) ? check[0] : check;
+  if (gate?.needs_password && !gate.password_ok) {
+    return { ok: false, error: loginPassword ? "wrong_password" : "password_required" };
+  }
 
   const email = emailForPhone(norm.e164);
   const password = passwordForPhone(norm.e164);
@@ -24,7 +39,6 @@ export async function signInWithPhone(phoneInput: string): Promise<Result> {
 
   if (signIn.error) {
     // New account → create it (admin), then sign in.
-    const admin = createAdminClient();
     const created = await admin.auth.admin.createUser({
       email,
       password,

@@ -38,6 +38,10 @@ export const dictionaries = {
       continue: "دخول",
       terms: "بالمتابعة، أنت توافق على الشروط وسياسة الخصوصية.",
       invalidPhone: "الرجاء إدخال رقم هاتف كويتي صحيح",
+      password: "كلمة المرور",
+      passwordPlaceholder: "أدخل كلمة المرور",
+      wrongPassword: "كلمة المرور غير صحيحة",
+      staffHint: "حسابات الموظفين والإدارة تتطلب كلمة مرور",
     },
 
     nav: {
@@ -283,6 +287,9 @@ export const dictionaries = {
         remove: "إزالة",
         addMember: "إضافة",
         confirmRemove: "إزالة هذا العضو؟",
+        resetPassword: "تغيير كلمة المرور",
+        newPassword: "كلمة المرور الجديدة:",
+        weakPassword: "كلمة المرور قصيرة جداً (4 أحرف على الأقل)",
       },
       roles: {
         admin: "مدير عام",
@@ -347,6 +354,10 @@ export const dictionaries = {
       continue: "Enter",
       terms: "By continuing, you agree to the Terms and Privacy Policy.",
       invalidPhone: "Please enter a valid Kuwait phone number",
+      password: "Password",
+      passwordPlaceholder: "Enter your password",
+      wrongPassword: "Incorrect password",
+      staffHint: "Staff and admin accounts require a password",
     },
 
     nav: {
@@ -592,6 +603,9 @@ export const dictionaries = {
         remove: "Remove",
         addMember: "Add",
         confirmRemove: "Remove this member?",
+        resetPassword: "Reset password",
+        newPassword: "New password:",
+        weakPassword: "Password too short (min 4 characters)",
       },
       roles: {
         admin: "Super Admin",

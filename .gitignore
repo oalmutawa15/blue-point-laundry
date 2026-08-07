@@ -43,3 +43,6 @@ next-env.d.ts
 # local dev
 .devserver.log
 scratch_logo/
+
+# local credentials sheet (not for the public repo)
+ACCOUNTS.md
