@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useLang } from "@/lib/i18n/LanguageProvider";
 import { OrderStatusBadge } from "@/components/customer/OrderStatusBadge";
@@ -9,6 +10,8 @@ import { formatAddress, mapsUrl } from "@/lib/address";
 import { markPickedUp, markDelivered } from "@/app/actions/driver";
 import type { Tables } from "@/types/database";
 import type { CustomerLite } from "@/lib/orderTypes";
+
+const AddressMap = dynamic(() => import("@/components/AddressMap"), { ssr: false });
 
 export function DriverOrderDetail({
   order,
@@ -85,12 +88,19 @@ export function DriverOrderDetail({
             href={mapsUrl(address)}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-3 block rounded-xl border border-border px-4 py-2.5 text-center text-sm font-semibold text-brand"
+            className="mt-3 block rounded-xl bg-brand px-4 py-2.5 text-center text-sm font-bold text-brand-foreground"
           >
-            {t.driver.openMap}
+            {t.common.googleMaps}
           </a>
         )}
       </div>
+
+      {address?.lat != null && address?.lng != null && (
+        <div className="rounded-2xl bg-card p-3 shadow-sm">
+          <p className="mb-2 text-xs font-semibold text-muted-foreground">{t.common.locationMap}</p>
+          <AddressMap lat={address.lat} lng={address.lng} />
+        </div>
+      )}
 
       {error && (
         <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm font-semibold text-danger">

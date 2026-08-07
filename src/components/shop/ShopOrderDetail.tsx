@@ -1,13 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useLang } from "@/lib/i18n/LanguageProvider";
 import { OrderStatusBadge } from "@/components/customer/OrderStatusBadge";
 import { ShopOrderActions } from "./ShopOrderActions";
 import { formatMoney } from "@/lib/money";
-import { formatAddress } from "@/lib/address";
+import { formatAddress, mapsUrl } from "@/lib/address";
 import type { Tables } from "@/types/database";
 import type { CustomerLite, DriverLite } from "@/lib/orderTypes";
+
+const AddressMap = dynamic(() => import("@/components/AddressMap"), { ssr: false });
 
 export function ShopOrderDetail({
   order,
@@ -61,7 +64,24 @@ export function ShopOrderDetail({
             {order.customer_note}
           </p>
         )}
+        {address && (
+          <a
+            href={mapsUrl(address)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 block rounded-xl bg-brand px-4 py-2.5 text-center text-sm font-bold text-brand-foreground"
+          >
+            {t.common.googleMaps}
+          </a>
+        )}
       </div>
+
+      {address?.lat != null && address?.lng != null && (
+        <div className="rounded-2xl bg-card p-3 shadow-sm">
+          <p className="mb-2 text-xs font-semibold text-muted-foreground">{t.common.locationMap}</p>
+          <AddressMap lat={address.lat} lng={address.lng} />
+        </div>
+      )}
 
       {/* Items */}
       {items.length > 0 && (

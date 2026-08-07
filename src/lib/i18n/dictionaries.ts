@@ -26,6 +26,8 @@ export const dictionaries = {
       signOut: "تسجيل الخروج",
       currency: "د.ك",
       retry: "إعادة المحاولة",
+      googleMaps: "خرائط جوجل",
+      locationMap: "الموقع على الخريطة",
     },
 
     login: {
@@ -333,6 +335,8 @@ export const dictionaries = {
       signOut: "Sign out",
       currency: "KWD",
       retry: "Retry",
+      googleMaps: "Google Maps",
+      locationMap: "Location on map",
     },
 
     login: {
