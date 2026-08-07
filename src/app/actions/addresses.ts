@@ -14,7 +14,8 @@ export type AddressInput = {
   floor?: string;
   apartment?: string;
   extra_directions?: string;
-  contact_phone?: string;
+  lat?: number;
+  lng?: number;
 };
 
 // Send an OTP to add/change an address. Mock: returns the code for now (no SMS yet).
@@ -67,7 +68,10 @@ export async function addAddress(
     .update({ consumed_at: new Date().toISOString() })
     .eq("id", otp.id);
 
-  const { data: existing } = await supabase.from("addresses").select("id").limit(1);
+  const [{ data: existing }, { data: prof }] = await Promise.all([
+    supabase.from("addresses").select("id").limit(1),
+    supabase.from("profiles").select("phone").eq("id", user.id).single(),
+  ]);
   const isFirst = (existing?.length ?? 0) === 0;
 
   const { error } = await supabase.from("addresses").insert({
@@ -80,7 +84,10 @@ export async function addAddress(
     floor: input.floor?.trim() || null,
     apartment: input.apartment?.trim() || null,
     extra_directions: input.extra_directions?.trim() || null,
-    contact_phone: input.contact_phone?.trim() || null,
+    // Contact number is always the signed-in customer's own phone.
+    contact_phone: prof?.phone ?? null,
+    lat: input.lat ?? null,
+    lng: input.lng ?? null,
     is_default: isFirst,
   });
   if (error) return { ok: false, error: error.message };

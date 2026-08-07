@@ -112,6 +112,11 @@ export const dictionaries = {
       otpSent: "تم إرسال الرمز",
       otpInvalid: "رمز غير صحيح أو منتهي",
       devHint: "وضع تجريبي: الرمز هو",
+      selectArea: "اختر المنطقة",
+      choose: "اختر",
+      mapTitle: "الموقع على الخريطة",
+      mapHint: "حرّك الدبوس على موقعك بالضبط",
+      ground: "أرضي",
     },
 
     orders: {
@@ -414,6 +419,11 @@ export const dictionaries = {
       otpSent: "Code sent",
       otpInvalid: "Invalid or expired code",
       devHint: "Test mode: your code is",
+      selectArea: "Select area",
+      choose: "Choose",
+      mapTitle: "Location on map",
+      mapHint: "Drag the pin to your exact spot",
+      ground: "Ground",
     },
 
     orders: {
