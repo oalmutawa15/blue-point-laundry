@@ -116,8 +116,8 @@ export const dictionaries = {
       devHint: "وضع تجريبي: الرمز هو",
       selectArea: "اختر المنطقة",
       choose: "اختر",
-      mapTitle: "الموقع على الخريطة",
-      mapHint: "حرّك الدبوس على موقعك بالضبط",
+      mapTitle: "ثبّت موقع منزلك على الخريطة",
+      mapHint: "حرّك الخريطة حتى يستقر الدبوس على منزلك، ثم أكّد",
       ground: "أرضي",
     },
 
@@ -425,8 +425,8 @@ export const dictionaries = {
       devHint: "Test mode: your code is",
       selectArea: "Select area",
       choose: "Choose",
-      mapTitle: "Location on map",
-      mapHint: "Drag the pin to your exact spot",
+      mapTitle: "Pin your home on the map",
+      mapHint: "Drag the map so the pin sits on your home, then confirm",
       ground: "Ground",
     },
 
