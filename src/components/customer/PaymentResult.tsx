@@ -28,9 +28,14 @@ export function PaymentResult({ paymentId }: { paymentId: string }) {
       if (!active) return;
       tries++;
       try {
-        const res = await fetch(`/api/payment-status?payment=${encodeURIComponent(paymentId)}`, {
-          cache: "no-store",
-        });
+        // Unique URL per poll (`&t=`) — some mobile browsers (notably iOS/iPadOS
+        // Safari) ignore `cache: no-store` on GETs and would otherwise serve the
+        // first "pending" response for every subsequent poll, so the page could
+        // never see "paid". A changing query param defeats that cache.
+        const res = await fetch(
+          `/api/payment-status?payment=${encodeURIComponent(paymentId)}&t=${tries}`,
+          { cache: "no-store" },
+        );
         const j = (await res.json()) as { status: ApiStatus; amountFils: number };
         if (!active) return;
         if (typeof j.amountFils === "number") setAmount(j.amountFils);

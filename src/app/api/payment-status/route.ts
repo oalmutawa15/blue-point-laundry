@@ -4,12 +4,19 @@ import { finalizeUpayments } from "@/lib/upayments";
 
 export const dynamic = "force-dynamic";
 
+// Never let a browser/CDN cache a transient "pending" and replay it as the final
+// answer — every poll must hit the live record.
+const NO_STORE = {
+  "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+} as const;
+
 // Polled by the payment-result screen. Finalizes (idempotently) and returns the
 // authoritative payment-record status, so a slightly-late webhook capture shows
 // as "approved" rather than a stale "failed".
 export async function GET(req: NextRequest) {
   const paymentId = req.nextUrl.searchParams.get("payment");
-  if (!paymentId) return NextResponse.json({ status: "failed", amountFils: 0 });
+  if (!paymentId)
+    return NextResponse.json({ status: "failed", amountFils: 0 }, { headers: NO_STORE });
 
   try {
     await finalizeUpayments(paymentId);
@@ -27,5 +34,5 @@ export async function GET(req: NextRequest) {
   const status =
     payment?.status === "paid" ? "paid" : payment?.status === "failed" ? "failed" : "pending";
   const amountFils = payment?.credit_fils ?? payment?.amount_fils ?? 0;
-  return NextResponse.json({ status, amountFils });
+  return NextResponse.json({ status, amountFils }, { headers: NO_STORE });
 }
