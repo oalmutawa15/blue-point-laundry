@@ -58,6 +58,7 @@ export async function upaymentsCreateCharge(
         Accept: "application/json",
       },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(12000),
     });
     const json = (await res.json().catch(() => ({}))) as {
       status?: boolean;
@@ -97,8 +98,12 @@ async function upaymentsPaymentState(idOrSession: string): Promise<PaymentState>
   ];
   for (const url of urls) {
     try {
+      // Hard timeout so a slow/hanging UPayments response can never freeze the
+      // confirmation for minutes — we'd rather return "pending" and let the next
+      // fast poll retry than block the page.
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${TOKEN}`, Accept: "application/json" },
+        signal: AbortSignal.timeout(6000),
       });
       const json = (await res.json().catch(() => ({}))) as {
         data?: { transaction?: { result?: string; status?: string } };
