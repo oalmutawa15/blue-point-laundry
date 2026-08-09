@@ -42,6 +42,9 @@ export const dictionaries = {
       passwordPlaceholder: "أدخل كلمة المرور",
       wrongPassword: "كلمة المرور غير صحيحة",
       staffHint: "حسابات الموظفين والإدارة تتطلب كلمة مرور",
+      fullName: "الاسم الكامل",
+      fullNamePlaceholder: "أدخل اسمك الكامل",
+      nameHint: "لأنها زيارتك الأولى، عرّفنا باسمك",
     },
 
     nav: {
@@ -455,6 +458,9 @@ export const dictionaries = {
       passwordPlaceholder: "Enter your password",
       wrongPassword: "Incorrect password",
       staffHint: "Staff and admin accounts require a password",
+      fullName: "Full name",
+      fullNamePlaceholder: "Enter your full name",
+      nameHint: "Since it's your first time, tell us your name",
     },
 
     nav: {

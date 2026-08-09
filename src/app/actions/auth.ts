@@ -14,6 +14,7 @@ type Result = { ok: true; redirect: string } | { ok: false; error: string };
 export async function signInWithPhone(
   phoneInput: string,
   loginPassword?: string,
+  fullName?: string,
 ): Promise<Result> {
   const norm = normalizeIntlPhone(phoneInput);
   if (!norm) return { ok: false, error: "invalid_phone" };
@@ -30,6 +31,19 @@ export async function signInWithPhone(
     return { ok: false, error: loginPassword ? "wrong_password" : "password_required" };
   }
 
+  // First-time (or still-nameless) customers must give their name — once.
+  const { data: existing } = await admin
+    .from("profiles")
+    .select("role, full_name")
+    .eq("phone", norm.e164)
+    .maybeSingle();
+  const isCustomer = !gate?.needs_password;
+  const needsName = isCustomer && (!existing || !existing.full_name?.trim());
+  const cleanName = fullName?.trim();
+  if (needsName && !cleanName) {
+    return { ok: false, error: "name_required" };
+  }
+
   const email = emailForPhone(norm.e164);
   const password = passwordForPhone(norm.e164);
   const supabase = await createClient();
@@ -43,7 +57,7 @@ export async function signInWithPhone(
       email,
       password,
       email_confirm: true,
-      user_metadata: { phone: norm.e164, role: "customer" },
+      user_metadata: { phone: norm.e164, role: "customer", full_name: cleanName ?? null },
     });
     if (created.error && !/already|registered|exists/i.test(created.error.message)) {
       return { ok: false, error: created.error.message };
@@ -52,8 +66,13 @@ export async function signInWithPhone(
     if (signIn.error) return { ok: false, error: signIn.error.message };
   }
 
-  // Route by role.
+  // Save the name the first time it's provided.
   const userId = signIn.data.user?.id;
+  if (userId && needsName && cleanName) {
+    await admin.from("profiles").update({ full_name: cleanName }).eq("id", userId);
+  }
+
+  // Route by role.
   let role: UserRole = "customer";
   if (userId) {
     const { data: profile } = await supabase

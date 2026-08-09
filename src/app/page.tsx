@@ -17,6 +17,8 @@ export default function LoginPage() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [needsPassword, setNeedsPassword] = useState(false);
+  const [name, setName] = useState("");
+  const [needsName, setNeedsName] = useState(false);
   const [touched, setTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,11 +53,19 @@ export default function LoginPage() {
     setError(null);
     if (!valid) return;
     setSubmitting(true);
-    const res = await signInWithPhone(fullPhone(), needsPassword ? password : undefined);
+    const res = await signInWithPhone(
+      fullPhone(),
+      needsPassword ? password : undefined,
+      needsName ? name : undefined,
+    );
     if (!res.ok) {
       setSubmitting(false);
       if (res.error === "password_required") {
         setNeedsPassword(true); // reveal the password field for staff/admin
+        return;
+      }
+      if (res.error === "name_required") {
+        setNeedsName(true); // first-time customer: ask for their name
         return;
       }
       setError(
@@ -155,6 +165,25 @@ export default function LoginPage() {
             </div>
           )}
 
+          {needsName && (
+            <div>
+              <label htmlFor="fullname" className="mb-1.5 block text-sm font-medium text-foreground">
+                {t.login.fullName}
+              </label>
+              <input
+                id="fullname"
+                type="text"
+                autoFocus
+                autoComplete="name"
+                placeholder={t.login.fullNamePlaceholder}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full rounded-xl border border-border bg-white px-3 py-3 text-base outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+              />
+              <p className="mt-1.5 text-xs text-muted-foreground">{t.login.nameHint}</p>
+            </div>
+          )}
+
           {error && (
             <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
               {error}
@@ -163,7 +192,7 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            disabled={!valid || submitting || (needsPassword && !password)}
+            disabled={!valid || submitting || (needsPassword && !password) || (needsName && !name.trim())}
             className="w-full rounded-xl bg-brand px-4 py-3 text-base font-bold text-brand-foreground transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting ? t.common.loading : t.login.continue}
