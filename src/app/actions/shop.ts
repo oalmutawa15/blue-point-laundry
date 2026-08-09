@@ -2,8 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyPickupAssigned, notifyReadyForDelivery } from "@/lib/notify";
 import type { Database } from "@/types/database";
+
+export type RefundType = "wallet" | "cash" | "none";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 type Ok = { ok: true } | { ok: false; error: string };
@@ -120,4 +123,63 @@ export async function assignDeliveryDriver(orderId: string, driverId: string): P
   await notifyReadyForDelivery(orderId, data.order_no, driverId);
   revalidate(orderId);
   return { ok: true };
+}
+
+// Cancel an order and refund it. If it was paid from the wallet, the amount is
+// credited back to the wallet; a cash (walk-in) order is a cash refund at the
+// counter (no wallet change). Orders that weren't paid yet refund nothing.
+export async function cancelOrder(
+  orderId: string,
+  reason?: string,
+): Promise<{ ok: true; refundFils: number; refundType: RefundType } | { ok: false; error: string }> {
+  const admin = createAdminClient();
+  const { data: order } = await admin
+    .from("orders")
+    .select("id, order_no, status, price_fils, charged, customer_id")
+    .eq("id", orderId)
+    .single();
+  if (!order) return { ok: false, error: "not_found" };
+  if (order.status === "cancelled") return { ok: false, error: "already_cancelled" };
+
+  // Was this order charged to the wallet?
+  const { data: charge } = await admin
+    .from("credit_transactions")
+    .select("id")
+    .eq("order_id", orderId)
+    .eq("type", "order_charge")
+    .maybeSingle();
+
+  const price = order.price_fils ?? 0;
+  let refundFils = 0;
+  let refundType: RefundType = "none";
+
+  if (charge && price > 0) {
+    // Paid from the wallet → refund to the wallet (idempotent per order).
+    await admin.rpc("wallet_refund", {
+      p_customer: order.customer_id,
+      p_amount: price,
+      p_order: orderId,
+      p_note: `Refund for ${order.order_no}`,
+    });
+    refundFils = price;
+    refundType = "wallet";
+  } else if (order.charged && price > 0) {
+    // Paid in cash at the counter (walk-in) → cash refund, wallet untouched.
+    refundFils = price;
+    refundType = "cash";
+  }
+
+  const { error } = await admin
+    .from("orders")
+    .update({
+      status: "cancelled",
+      charged: false, // exclude from revenue
+      cancel_reason: reason?.trim() || null,
+      refund_fils: refundFils || null,
+    })
+    .eq("id", orderId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidate(orderId);
+  return { ok: true, refundFils, refundType };
 }

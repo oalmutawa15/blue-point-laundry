@@ -162,9 +162,11 @@ export type Database = {
           created_at: string
           customer_id: string
           customer_note: string | null
+          cancel_reason: string | null
           delivery_date: string | null
           delivery_driver_id: string | null
           delivery_photo_url: string | null
+          refund_fils: number | null
           id: string
           order_no: string
           pickup_address_id: string | null
@@ -180,9 +182,11 @@ export type Database = {
           created_at?: string
           customer_id: string
           customer_note?: string | null
+          cancel_reason?: string | null
           delivery_date?: string | null
           delivery_driver_id?: string | null
           delivery_photo_url?: string | null
+          refund_fils?: number | null
           id?: string
           order_no?: string
           pickup_address_id?: string | null
@@ -198,9 +202,11 @@ export type Database = {
           created_at?: string
           customer_id?: string
           customer_note?: string | null
+          cancel_reason?: string | null
           delivery_date?: string | null
           delivery_driver_id?: string | null
           delivery_photo_url?: string | null
+          refund_fils?: number | null
           id?: string
           order_no?: string
           pickup_address_id?: string | null

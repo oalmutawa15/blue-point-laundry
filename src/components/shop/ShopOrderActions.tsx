@@ -10,6 +10,7 @@ import {
   type FlatPriceItem,
   type PriceService,
 } from "@/lib/priceList";
+import Link from "next/link";
 import {
   assignPickupDriver,
   assignDeliveryDriver,
@@ -17,6 +18,7 @@ import {
   markReceived,
   confirmPayment,
   markReady,
+  cancelOrder,
   type ItemInput,
 } from "@/app/actions/shop";
 import type { Tables } from "@/types/database";
@@ -323,42 +325,127 @@ export function ShopOrderActions({
     </div>
   );
 
-  switch (order.status) {
-    case "new":
-      return (
-        <DriverPicker
-          drivers={drivers}
-          label={t.shop.assignPickup}
-          onAssign={async (id) => {
-            await assignPickupDriver(order.id, id);
-            router.refresh();
-          }}
-        />
-      );
-    case "pickup_requested":
-      return info(`${t.status.pickup_requested} — ${t.driver.pickups}`);
-    case "picked_up":
-      return primaryBtn(t.shop.markReceived, () => markReceived(order.id));
-    case "counting":
-      return <IntakeForm orderId={order.id} />;
-    case "awaiting_payment":
-      return primaryBtn(t.shop.confirmPayment, () => confirmPayment(order.id));
-    case "washing":
-      return primaryBtn(t.shop.markReadyBtn, () => markReady(order.id));
-    case "ready":
-      return (
-        <DriverPicker
-          drivers={drivers}
-          label={t.shop.assignDelivery}
-          onAssign={async (id) => {
-            await assignDeliveryDriver(order.id, id);
-            router.refresh();
-          }}
-        />
-      );
-    case "delivering":
-      return info(t.status.delivering);
-    default:
-      return null;
+  const statusAction = (() => {
+    switch (order.status) {
+      case "new":
+        return (
+          <DriverPicker
+            drivers={drivers}
+            label={t.shop.assignPickup}
+            onAssign={async (id) => {
+              await assignPickupDriver(order.id, id);
+              router.refresh();
+            }}
+          />
+        );
+      case "pickup_requested":
+        return info(`${t.status.pickup_requested} — ${t.driver.pickups}`);
+      case "picked_up":
+        return primaryBtn(t.shop.markReceived, () => markReceived(order.id));
+      case "counting":
+        return <IntakeForm orderId={order.id} />;
+      case "awaiting_payment":
+        return primaryBtn(t.shop.confirmPayment, () => confirmPayment(order.id));
+      case "washing":
+        return primaryBtn(t.shop.markReadyBtn, () => markReady(order.id));
+      case "ready":
+        return (
+          <DriverPicker
+            drivers={drivers}
+            label={t.shop.assignDelivery}
+            onAssign={async (id) => {
+              await assignDeliveryDriver(order.id, id);
+              router.refresh();
+            }}
+          />
+        );
+      case "delivering":
+        return info(t.status.delivering);
+      default:
+        return null;
+    }
+  })();
+
+  return (
+    <div className="space-y-4">
+      {statusAction}
+
+      {order.status === "cancelled" ? (
+        <div className="rounded-2xl border border-border bg-card p-4 text-center shadow-sm">
+          <p className="text-sm font-bold text-muted-foreground">{t.status.cancelled}</p>
+          <Link
+            href={`/shop/orders/${order.id}/receipt`}
+            className="mt-2 inline-block rounded-xl bg-brand px-4 py-2.5 text-sm font-bold text-brand-foreground"
+          >
+            {t.shop.viewRefund}
+          </Link>
+        </div>
+      ) : (
+        <CancelBox order={order} />
+      )}
+    </div>
+  );
+}
+
+function CancelBox({ order }: { order: Tables<"orders"> }) {
+  const { t } = useLang();
+  const router = useRouter();
+  const [openBox, setOpenBox] = useState(false);
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function doCancel() {
+    setBusy(true);
+    setError(null);
+    const res = await cancelOrder(order.id, reason);
+    if (!res.ok) {
+      setBusy(false);
+      setError(res.error);
+      return;
+    }
+    router.push(`/shop/orders/${order.id}/receipt`);
+    router.refresh();
   }
+
+  if (!openBox) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpenBox(true)}
+        className="w-full rounded-xl border border-danger/40 py-2.5 text-sm font-bold text-danger"
+      >
+        {t.shop.cancelOrder}
+      </button>
+    );
+  }
+
+  return (
+    <div className="space-y-2 rounded-2xl border border-danger/40 p-3">
+      <p className="text-sm font-bold text-danger">{t.shop.cancelOrder}</p>
+      <textarea
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        placeholder={t.shop.cancelReason}
+        rows={2}
+        className="w-full resize-none rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-brand"
+      />
+      {error && <p className="text-sm font-semibold text-danger">{error}</p>}
+      <div className="flex gap-2">
+        <button
+          onClick={doCancel}
+          disabled={busy}
+          className="flex-1 rounded-lg bg-danger px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+        >
+          {busy ? t.common.loading : t.shop.confirmCancel}
+        </button>
+        <button
+          onClick={() => setOpenBox(false)}
+          className="rounded-lg border border-border px-4 py-2.5 text-sm font-semibold"
+        >
+          {t.common.cancel}
+        </button>
+      </div>
+    </div>
+  );
 }
