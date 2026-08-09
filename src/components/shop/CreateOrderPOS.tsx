@@ -15,6 +15,14 @@ import { searchCustomers, createWalkInOrder, type CustomerHit } from "@/app/acti
 import type { ItemInput } from "@/app/actions/shop";
 
 const SERVICES: PriceService[] = ["wash", "dryclean", "iron"];
+const TIME_SLOTS = [
+  "09:00–11:00",
+  "11:00–13:00",
+  "13:00–15:00",
+  "15:00–17:00",
+  "17:00–19:00",
+  "19:00–21:00",
+];
 
 type CartLine = {
   uid: number;
@@ -25,6 +33,59 @@ type CartLine = {
 };
 
 let uidSeq = 1;
+
+function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      onClick={() => onChange(!on)}
+      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${on ? "bg-brand" : "bg-muted"}`}
+    >
+      <span
+        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${
+          on ? "ltr:left-[22px] rtl:right-[22px]" : "ltr:left-0.5 rtl:right-0.5"
+        }`}
+      />
+    </button>
+  );
+}
+
+function Section({
+  title,
+  icon,
+  children,
+  defaultOpen = true,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="overflow-hidden rounded-2xl bg-card shadow-sm">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between px-4 py-3"
+      >
+        <span className="flex items-center gap-2 text-sm font-extrabold text-brand">
+          {icon}
+          {title}
+        </span>
+        <svg
+          className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+          viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+      {open && <div className="px-4 pb-4">{children}</div>}
+    </div>
+  );
+}
 
 export function CreateOrderPOS() {
   const { t, lang } = useLang();
@@ -44,6 +105,10 @@ export function CreateOrderPOS() {
   const [newPhone, setNewPhone] = useState("");
 
   const [deliveryDate, setDeliveryDate] = useState("");
+  const [timeSlot, setTimeSlot] = useState("");
+  const [fast, setFast] = useState(false);
+  const [pickup, setPickup] = useState(false);
+  const [delivery, setDelivery] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -98,12 +163,19 @@ export function CreateOrderPOS() {
       unit_price_fils: l.priceFils,
     }));
 
+    const noteParts: string[] = [];
+    if (fast) noteParts.push(t.pos.fast);
+    if (pickup) noteParts.push(t.pos.pickup);
+    if (delivery) noteParts.push(t.pos.delivery);
+    if (timeSlot) noteParts.push(`${t.pos.readyBy}: ${timeSlot}`);
+
     setBusy(true);
     const res = await createWalkInOrder({
       customerId: selectedCust?.id,
       newCustomer: selectedCust ? undefined : { name: newName.trim(), phone: newPhone.trim() },
       items: orderItems,
       deliveryDate: deliveryDate || null,
+      note: noteParts.join(" • ") || undefined,
     });
     setBusy(false);
     if (!res.ok) {
@@ -237,10 +309,59 @@ export function CreateOrderPOS() {
           )}
         </div>
 
+        {/* Date & time */}
+        <Section
+          title={t.pos.dateTime}
+          icon={<svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>}
+        >
+          <div className="space-y-3">
+            <label className="flex items-center justify-between">
+              <span className="flex items-center gap-2 text-sm font-semibold">
+                <svg className="h-4 w-4 text-amber-500" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z" /></svg>
+                {t.pos.fast}
+              </span>
+              <Toggle on={fast} onChange={setFast} />
+            </label>
+            <label className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-muted-foreground">{t.pos.pickup}</span>
+              <Toggle on={pickup} onChange={setPickup} />
+            </label>
+            <label className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-muted-foreground">{t.pos.delivery}</span>
+              <Toggle on={delivery} onChange={setDelivery} />
+            </label>
+
+            <div>
+              <p className="mb-1.5 text-xs font-semibold text-muted-foreground">{t.pos.readyBy}</p>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="date"
+                  value={deliveryDate}
+                  onChange={(e) => setDeliveryDate(e.target.value)}
+                  className="rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-brand"
+                />
+                <select
+                  value={timeSlot}
+                  onChange={(e) => setTimeSlot(e.target.value)}
+                  className="rounded-lg border border-border bg-white px-2 py-2 text-sm outline-none focus:border-brand"
+                >
+                  <option value="">{t.pos.timeSlot}</option>
+                  {TIME_SLOTS.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+        </Section>
+
         {/* Items */}
-        <div className="rounded-2xl bg-card p-3 shadow-sm">
+        <Section
+          title={`${t.pos.items} (${cart.length})`}
+          icon={<svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" /><path d="M3 6h18M16 10a4 4 0 0 1-8 0" /></svg>}
+        >
           {cart.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">{t.pos.emptyCart}</p>
+            <p className="py-6 text-center text-sm text-muted-foreground">{t.pos.emptyCart}</p>
           ) : (
             <div className="space-y-3">
               {cart.map((l) => (
@@ -274,23 +395,36 @@ export function CreateOrderPOS() {
               ))}
             </div>
           )}
-        </div>
+        </Section>
 
-        {/* Delivery date */}
-        <div className="rounded-2xl bg-card p-3 shadow-sm">
-          <label className="mb-1 block text-xs font-semibold text-muted-foreground">{t.shop.deliveryDate}</label>
-          <input
-            type="date"
-            value={deliveryDate}
-            onChange={(e) => setDeliveryDate(e.target.value)}
-            className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-brand"
-          />
-        </div>
-
-        <div className="flex items-center justify-between rounded-2xl bg-muted px-4 py-3">
-          <span className="font-bold">{t.shop.total}</span>
-          <span className="text-lg font-extrabold tabular-nums">{formatMoney(total, lang)}</span>
-        </div>
+        {/* Receipt */}
+        <Section
+          title={t.pos.receipt}
+          icon={<svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" /><path d="M8 7h8M8 11h8M8 15h5" /></svg>}
+        >
+          {cart.length === 0 ? (
+            <p className="py-4 text-center text-sm text-muted-foreground">{t.pos.emptyCart}</p>
+          ) : (
+            <div className="space-y-1.5 text-sm">
+              {cart.map((l) => (
+                <div key={l.uid} className="flex items-center justify-between gap-2">
+                  <span className="truncate text-muted-foreground">
+                    {name(l.item)} · {t.shop.services[l.service]} ×{l.qty}
+                  </span>
+                  <span className="shrink-0 tabular-nums">{filsToKwd(l.qty * l.priceFils)}</span>
+                </div>
+              ))}
+              <div className="mt-2 flex items-center justify-between border-t border-border pt-2 font-bold text-muted-foreground">
+                <span>{t.orders.pieces}</span>
+                <span className="tabular-nums">{cart.reduce((s, l) => s + l.qty, 0)}</span>
+              </div>
+              <div className="flex items-center justify-between text-base font-extrabold">
+                <span>{t.shop.total}</span>
+                <span className="tabular-nums">{formatMoney(total, lang)}</span>
+              </div>
+            </div>
+          )}
+        </Section>
 
         {error && <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm font-semibold text-danger">{error}</p>}
 
