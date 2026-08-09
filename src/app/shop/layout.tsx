@@ -15,7 +15,7 @@ export default async function ShopLayout({
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-5xl bg-background">
+    <div className="mx-auto min-h-screen max-w-6xl bg-background">
       <StaffTopBar area="shop" home="/shop" />
       <main className="px-4 py-5">{children}</main>
     </div>

@@ -34,7 +34,16 @@ export function ShopOrderList({ orders }: { orders: OrderWithRelations[] }) {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-extrabold">{t.shop.title}</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-2xl font-extrabold">{t.shop.title}</h1>
+        <Link
+          href="/shop/create"
+          className="flex items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-bold text-brand-foreground"
+        >
+          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
+          {t.pos.newWalkIn}
+        </Link>
+      </div>
 
       <div className="flex gap-2">
         {tabs.map((tb) => (
