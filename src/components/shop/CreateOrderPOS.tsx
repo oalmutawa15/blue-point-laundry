@@ -26,7 +26,8 @@ const TIME_SLOTS = [
 
 type CartLine = {
   uid: number;
-  item: FlatPriceItem;
+  name: string;
+  item: FlatPriceItem | null; // null for a custom item
   service: PriceService;
   qty: number;
   priceFils: number;
@@ -96,6 +97,11 @@ export function CreateOrderPOS() {
   const [cat, setCat] = useState("all");
   const [cart, setCart] = useState<CartLine[]>([]);
 
+  // Custom item form
+  const [showCustom, setShowCustom] = useState(false);
+  const [customName, setCustomName] = useState("");
+  const [customPrice, setCustomPrice] = useState("");
+
   // Customer
   const [custMode, setCustMode] = useState<"search" | "new">("search");
   const [custQuery, setCustQuery] = useState("");
@@ -122,7 +128,14 @@ export function CreateOrderPOS() {
   function addToCart(item: FlatPriceItem) {
     const service: PriceService = "wash";
     const priceFils = priceForItem(item, service) ?? 0;
-    setCart((c) => [...c, { uid: uidSeq++, item, service, qty: 1, priceFils }]);
+    setCart((c) => [...c, { uid: uidSeq++, name: name(item), item, service, qty: 1, priceFils }]);
+  }
+
+  function addCustom(itemName: string, priceFils: number) {
+    setCart((c) => [
+      ...c,
+      { uid: uidSeq++, name: itemName, item: null, service: "wash", qty: 1, priceFils },
+    ]);
   }
 
   function updateLine(uid: number, patch: Partial<CartLine>) {
@@ -130,7 +143,8 @@ export function CreateOrderPOS() {
       c.map((l) => {
         if (l.uid !== uid) return l;
         const next = { ...l, ...patch };
-        if (patch.service !== undefined) {
+        // Catalog items re-price on service change; custom items keep their price.
+        if (patch.service !== undefined && l.item) {
           next.priceFils = priceForItem(l.item, patch.service) ?? l.priceFils;
         }
         return next;
@@ -157,7 +171,7 @@ export function CreateOrderPOS() {
     if (!hasCustomer) return setError(t.pos.needCustomer);
 
     const orderItems: ItemInput[] = cart.map((l) => ({
-      garment: name(l.item),
+      garment: l.name,
       service: l.service,
       qty: l.qty,
       unit_price_fils: l.priceFils,
@@ -210,6 +224,48 @@ export function CreateOrderPOS() {
               {name(c)}
             </button>
           ))}
+        </div>
+
+        {/* Add custom item */}
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowCustom((s) => !s)}
+            className="flex items-center gap-2 text-sm font-bold text-brand"
+          >
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
+            {t.pos.addCustom}
+          </button>
+          {showCustom && (
+            <div className="mt-2 grid gap-2 rounded-2xl border border-border bg-card p-3 sm:grid-cols-[1fr_120px_auto]">
+              <input
+                value={customName}
+                onChange={(e) => setCustomName(e.target.value)}
+                placeholder={t.pos.customName}
+                className="rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-brand"
+              />
+              <input
+                value={customPrice}
+                onChange={(e) => setCustomPrice(e.target.value.replace(/[^\d.]/g, ""))}
+                inputMode="decimal"
+                placeholder={t.pos.customPrice}
+                className="rounded-lg border border-border bg-white px-3 py-2 text-center text-sm tabular-nums outline-none focus:border-brand"
+              />
+              <button
+                type="button"
+                disabled={!customName.trim() || !customPrice}
+                onClick={() => {
+                  addCustom(customName.trim(), Math.round(parseFloat(customPrice || "0") * 1000));
+                  setCustomName("");
+                  setCustomPrice("");
+                  setShowCustom(false);
+                }}
+                className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-brand-foreground disabled:opacity-50"
+              >
+                {t.pos.add}
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -367,7 +423,7 @@ export function CreateOrderPOS() {
               {cart.map((l) => (
                 <div key={l.uid} className="rounded-xl border border-border p-2.5">
                   <div className="mb-2 flex items-center justify-between gap-2">
-                    <span className="text-sm font-bold">{name(l.item)}</span>
+                    <span className="text-sm font-bold">{l.name}</span>
                     <button onClick={() => setCart((c) => c.filter((x) => x.uid !== l.uid))} className="text-xs font-semibold text-danger">
                       {t.common.delete}
                     </button>
@@ -409,7 +465,7 @@ export function CreateOrderPOS() {
               {cart.map((l) => (
                 <div key={l.uid} className="flex items-center justify-between gap-2">
                   <span className="truncate text-muted-foreground">
-                    {name(l.item)} · {t.shop.services[l.service]} ×{l.qty}
+                    {l.name} · {t.shop.services[l.service]} ×{l.qty}
                   </span>
                   <span className="shrink-0 tabular-nums">{filsToKwd(l.qty * l.priceFils)}</span>
                 </div>

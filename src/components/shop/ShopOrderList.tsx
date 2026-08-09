@@ -7,30 +7,29 @@ import { OrderStatusBadge } from "@/components/customer/OrderStatusBadge";
 import { formatAddress } from "@/lib/address";
 import { formatMoney } from "@/lib/money";
 import type { OrderWithRelations } from "@/lib/orderTypes";
+import type { OrderStatus } from "@/types/database";
 
-type Tab = "all" | "new" | "active" | "done";
+// Every order phase, in flow order.
+const PHASES: OrderStatus[] = [
+  "new",
+  "pickup_requested",
+  "picked_up",
+  "counting",
+  "awaiting_payment",
+  "washing",
+  "ready",
+  "delivering",
+  "delivered",
+  "cancelled",
+];
 
 export function ShopOrderList({ orders }: { orders: OrderWithRelations[] }) {
   const { t, lang } = useLang();
-  const [tab, setTab] = useState<Tab>("all");
+  const [filter, setFilter] = useState<"all" | OrderStatus>("all");
 
-  const groups: Record<Tab, OrderWithRelations[]> = {
-    all: orders,
-    new: orders.filter((o) => o.status === "new"),
-    active: orders.filter(
-      (o) => !["new", "delivered", "cancelled"].includes(o.status),
-    ),
-    done: orders.filter((o) => ["delivered", "cancelled"].includes(o.status)),
-  };
-
-  const tabs: { key: Tab; label: string }[] = [
-    { key: "all", label: t.shop.all },
-    { key: "new", label: t.shop.newOrders },
-    { key: "active", label: t.shop.active },
-    { key: "done", label: t.shop.completed },
-  ];
-
-  const list = groups[tab];
+  const list = filter === "all" ? orders : orders.filter((o) => o.status === filter);
+  const countFor = (f: "all" | OrderStatus) =>
+    f === "all" ? orders.length : orders.filter((o) => o.status === f).length;
 
   return (
     <div className="space-y-4">
@@ -45,27 +44,24 @@ export function ShopOrderList({ orders }: { orders: OrderWithRelations[] }) {
         </Link>
       </div>
 
-      <div className="flex gap-2">
-        {tabs.map((tb) => (
-          <button
-            key={tb.key}
-            onClick={() => setTab(tb.key)}
-            className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-bold transition-colors ${
-              tab === tb.key
-                ? "bg-brand text-brand-foreground"
-                : "bg-card text-muted-foreground"
-            }`}
-          >
-            {tb.label}
-            <span
-              className={`rounded-full px-1.5 text-xs ${
-                tab === tb.key ? "bg-white/20" : "bg-muted"
-              }`}
-            >
-              {groups[tb.key].length}
-            </span>
-          </button>
-        ))}
+      <div>
+        <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">
+          {t.shop.filterByStatus}
+        </label>
+        <select
+          value={filter}
+          onChange={(e) => setFilter(e.target.value as "all" | OrderStatus)}
+          className="w-full rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand sm:w-72"
+        >
+          <option value="all">
+            {t.shop.all} ({countFor("all")})
+          </option>
+          {PHASES.map((p) => (
+            <option key={p} value={p}>
+              {t.status[p]} ({countFor(p)})
+            </option>
+          ))}
+        </select>
       </div>
 
       {list.length === 0 ? (

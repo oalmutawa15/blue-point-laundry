@@ -36,19 +36,6 @@ function NavIcon({ name }: { name: IconName }) {
   }
 }
 
-function CreditChip({ creditFils }: { creditFils: number }) {
-  const { t, lang } = useLang();
-  return (
-    <Link
-      href="/credit"
-      className="flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-sm font-bold tabular-nums transition-colors hover:bg-white/25"
-    >
-      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="6" width="18" height="12" rx="2" /><path d="M3 10h18" /></svg>
-      {formatMoney(creditFils, lang)}
-      <span className="sr-only">{t.nav.credit}</span>
-    </Link>
-  );
-}
 
 export function CustomerShell({
   children,
@@ -157,7 +144,6 @@ export function CustomerShell({
               </Link>
             </div>
             <div className="flex items-center gap-2">
-              <CreditChip creditFils={creditFils} />
               <LanguageToggle />
               <SignOutBtn className="rounded-full p-2 text-white/80 transition-colors hover:bg-white/10" />
             </div>

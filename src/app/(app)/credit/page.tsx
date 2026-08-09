@@ -2,6 +2,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionProfile } from "@/lib/auth";
 import { CreditView } from "@/components/customer/CreditView";
 
+// Always show the live balance (never a cached copy).
+export const dynamic = "force-dynamic";
+
 export default async function CreditPage({
   searchParams,
 }: {

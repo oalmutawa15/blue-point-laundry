@@ -95,6 +95,10 @@ export const dictionaries = {
       timeSlot: "اختر الوقت",
       items: "الأصناف",
       receipt: "الفاتورة",
+      addCustom: "إضافة صنف مخصص",
+      customName: "اسم الصنف",
+      customPrice: "السعر (د.ك)",
+      add: "إضافة",
     },
     profile: {
       title: "حسابي",
@@ -248,6 +252,7 @@ export const dictionaries = {
     shop: {
       title: "لوحة المصبغة",
       all: "الكل",
+      filterByStatus: "تصفية حسب الحالة",
       newOrders: "طلبات جديدة",
       active: "قيد التنفيذ",
       completed: "مكتملة",
@@ -511,6 +516,10 @@ export const dictionaries = {
       timeSlot: "Select time",
       items: "Items",
       receipt: "Receipt",
+      addCustom: "Add custom item",
+      customName: "Item name",
+      customPrice: "Price (KWD)",
+      add: "Add",
     },
     profile: {
       title: "Profile",
@@ -664,6 +673,7 @@ export const dictionaries = {
     shop: {
       title: "Shop dashboard",
       all: "All",
+      filterByStatus: "Filter by status",
       newOrders: "New orders",
       active: "In progress",
       completed: "Completed",
