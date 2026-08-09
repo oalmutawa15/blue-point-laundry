@@ -187,19 +187,21 @@ export const dictionaries = {
     },
 
     status: {
-      requested: "طلب جديد",
-      pickup_assigned: "تم تعيين مندوب الاستلام",
+      new: "طلب جديد",
+      pickup_requested: "تم طلب الاستلام",
       picked_up: "تم استلام الملابس",
-      at_shop: "في المصبغة",
-      priced: "تم التسعير",
-      processing: "قيد المعالجة",
-      out_for_delivery: "في الطريق إليك",
-      completed: "مكتمل",
+      counting: "بانتظار العدّ",
+      awaiting_payment: "بانتظار الدفع",
+      washing: "قيد الغسيل",
+      ready: "جاهز للتسليم",
+      delivering: "قيد التوصيل",
+      delivered: "تم التسليم",
       cancelled: "ملغي",
     },
 
     shop: {
       title: "لوحة المصبغة",
+      all: "الكل",
       newOrders: "طلبات جديدة",
       active: "قيد التنفيذ",
       completed: "مكتملة",
@@ -221,6 +223,10 @@ export const dictionaries = {
       sendToCustomer: "حفظ وإرسال للعميل",
       startWashing: "بدء الغسيل",
       markReady: "جاهز — تعيين مندوب التوصيل",
+      markReceived: "تم الاستلام في المصبغة",
+      confirmPayment: "تأكيد الدفع وبدء الغسيل",
+      markReadyBtn: "جاهز للتسليم",
+      customerNoCredit: "رصيد العميل غير كافٍ. اطلب منه شحن الرصيد قبل بدء الغسيل.",
       pickupDriver: "مندوب الاستلام",
       deliveryDriver: "مندوب التوصيل",
       services: {
@@ -243,6 +249,10 @@ export const dictionaries = {
       deliverTo: "التوصيل إلى",
       customer: "العميل",
       insufficientCredit: "رصيد العميل غير كافٍ لإتمام الطلب. اطلب منه شحن الرصيد.",
+      takePhoto: "التقط صورة التسليم",
+      retakePhoto: "إعادة التقاط الصورة",
+      deliveryPhoto: "صورة التسليم",
+      photoRequired: "يجب إرفاق صورة قبل تأكيد التسليم",
     },
 
     admin: {
@@ -547,19 +557,21 @@ export const dictionaries = {
     },
 
     status: {
-      requested: "Requested",
-      pickup_assigned: "Pickup assigned",
+      new: "New order",
+      pickup_requested: "Pickup requested",
       picked_up: "Picked up",
-      at_shop: "At the shop",
-      priced: "Priced",
-      processing: "Processing",
-      out_for_delivery: "Out for delivery",
-      completed: "Completed",
+      counting: "Pending counting",
+      awaiting_payment: "Pending payment",
+      washing: "Being washed",
+      ready: "Ready",
+      delivering: "Being delivered",
+      delivered: "Delivered",
       cancelled: "Cancelled",
     },
 
     shop: {
       title: "Shop dashboard",
+      all: "All",
       newOrders: "New orders",
       active: "In progress",
       completed: "Completed",
@@ -581,6 +593,10 @@ export const dictionaries = {
       sendToCustomer: "Save & send to customer",
       startWashing: "Start washing",
       markReady: "Ready — assign delivery driver",
+      markReceived: "Mark received at shop",
+      confirmPayment: "Confirm payment & start washing",
+      markReadyBtn: "Ready for delivery",
+      customerNoCredit: "Customer has insufficient credit. Ask them to top up before washing.",
       pickupDriver: "Pickup driver",
       deliveryDriver: "Delivery driver",
       services: {
@@ -603,6 +619,10 @@ export const dictionaries = {
       deliverTo: "Deliver to",
       customer: "Customer",
       insufficientCredit: "Customer has insufficient credit to complete. Ask them to top up.",
+      takePhoto: "Take delivery photo",
+      retakePhoto: "Retake photo",
+      deliveryPhoto: "Delivery photo",
+      photoRequired: "A photo is required before confirming delivery",
     },
 
     admin: {

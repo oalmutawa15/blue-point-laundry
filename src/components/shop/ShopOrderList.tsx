@@ -8,21 +8,23 @@ import { formatAddress } from "@/lib/address";
 import { formatMoney } from "@/lib/money";
 import type { OrderWithRelations } from "@/lib/orderTypes";
 
-type Tab = "new" | "active" | "done";
+type Tab = "all" | "new" | "active" | "done";
 
 export function ShopOrderList({ orders }: { orders: OrderWithRelations[] }) {
   const { t, lang } = useLang();
-  const [tab, setTab] = useState<Tab>("new");
+  const [tab, setTab] = useState<Tab>("all");
 
   const groups: Record<Tab, OrderWithRelations[]> = {
-    new: orders.filter((o) => o.status === "requested"),
+    all: orders,
+    new: orders.filter((o) => o.status === "new"),
     active: orders.filter(
-      (o) => !["requested", "completed", "cancelled"].includes(o.status),
+      (o) => !["new", "delivered", "cancelled"].includes(o.status),
     ),
-    done: orders.filter((o) => ["completed", "cancelled"].includes(o.status)),
+    done: orders.filter((o) => ["delivered", "cancelled"].includes(o.status)),
   };
 
   const tabs: { key: Tab; label: string }[] = [
+    { key: "all", label: t.shop.all },
     { key: "new", label: t.shop.newOrders },
     { key: "active", label: t.shop.active },
     { key: "done", label: t.shop.completed },

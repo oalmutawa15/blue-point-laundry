@@ -18,13 +18,13 @@ export default async function DriverDashboard() {
       .from("orders")
       .select(SELECT)
       .eq("pickup_driver_id", user.id)
-      .eq("status", "pickup_assigned")
+      .eq("status", "pickup_requested")
       .order("created_at", { ascending: false }),
     supabase
       .from("orders")
       .select(SELECT)
       .eq("delivery_driver_id", user.id)
-      .eq("status", "out_for_delivery")
+      .eq("status", "delivering")
       .order("created_at", { ascending: false }),
   ]);
 

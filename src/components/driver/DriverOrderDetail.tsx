@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
@@ -28,11 +28,21 @@ export function DriverOrderDetail({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [photo, setPhoto] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const isPickup =
-    order.pickup_driver_id === currentUserId && order.status === "pickup_assigned";
+    order.pickup_driver_id === currentUserId && order.status === "pickup_requested";
   const isDelivery =
-    order.delivery_driver_id === currentUserId && order.status === "out_for_delivery";
+    order.delivery_driver_id === currentUserId && order.status === "delivering";
+
+  function onPickPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setPhoto(typeof reader.result === "string" ? reader.result : null);
+    reader.readAsDataURL(file);
+  }
 
   async function act(fn: () => Promise<{ ok: boolean; error?: string }>) {
     setBusy(true);
@@ -118,13 +128,46 @@ export function DriverOrderDetail({
         </button>
       )}
       {isDelivery && (
-        <button
-          onClick={() => act(() => markDelivered(order.id))}
-          disabled={busy}
-          className="w-full rounded-xl bg-success px-4 py-3.5 text-base font-bold text-white disabled:opacity-50"
-        >
-          {busy ? t.common.loading : t.driver.markDelivered}
-        </button>
+        <div className="space-y-3">
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={onPickPhoto}
+            className="hidden"
+          />
+          {photo ? (
+            <div className="overflow-hidden rounded-2xl border border-border">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={photo} alt={t.driver.deliveryPhoto} className="max-h-64 w-full object-cover" />
+              <button
+                onClick={() => fileRef.current?.click()}
+                className="w-full bg-card py-2 text-sm font-semibold text-brand"
+              >
+                {t.driver.retakePhoto}
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => fileRef.current?.click()}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border bg-card px-4 py-6 text-sm font-bold text-muted-foreground"
+            >
+              <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z" /><circle cx="12" cy="13" r="3.5" /></svg>
+              {t.driver.takePhoto}
+            </button>
+          )}
+          <button
+            onClick={() => act(() => markDelivered(order.id, photo ?? undefined))}
+            disabled={busy || !photo}
+            className="w-full rounded-xl bg-success px-4 py-3.5 text-base font-bold text-white disabled:opacity-50"
+          >
+            {busy ? t.common.loading : t.driver.markDelivered}
+          </button>
+          {!photo && (
+            <p className="text-center text-xs text-muted-foreground">{t.driver.photoRequired}</p>
+          )}
+        </div>
       )}
     </div>
   );

@@ -8,7 +8,9 @@ import {
   assignPickupDriver,
   assignDeliveryDriver,
   saveIntake,
-  startProcessing,
+  markReceived,
+  confirmPayment,
+  markReady,
   type ItemInput,
 } from "@/app/actions/shop";
 import type { Tables } from "@/types/database";
@@ -191,61 +193,73 @@ export function ShopOrderActions({
 }) {
   const { t } = useLang();
   const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  async function refresh() {
+  async function run(fn: () => Promise<{ ok: boolean; error?: string }>) {
+    setBusy(true);
+    setError(null);
+    const res = await fn();
+    if (!res.ok) {
+      setBusy(false);
+      setError(res.error === "insufficient_credit" ? t.shop.customerNoCredit : (res.error ?? "error"));
+      return;
+    }
     router.refresh();
   }
 
+  const info = (text: string) => (
+    <p className="rounded-xl bg-muted px-4 py-3 text-sm text-muted-foreground">{text}</p>
+  );
+
+  const primaryBtn = (label: string, fn: () => Promise<{ ok: boolean; error?: string }>) => (
+    <div className="space-y-2">
+      <button
+        onClick={() => run(fn)}
+        disabled={busy}
+        className="w-full rounded-xl bg-brand px-4 py-3.5 text-base font-bold text-brand-foreground disabled:opacity-50"
+      >
+        {busy ? t.common.loading : label}
+      </button>
+      {error && <p className="text-sm font-semibold text-danger">{error}</p>}
+    </div>
+  );
+
   switch (order.status) {
-    case "requested":
+    case "new":
       return (
         <DriverPicker
           drivers={drivers}
           label={t.shop.assignPickup}
           onAssign={async (id) => {
             await assignPickupDriver(order.id, id);
-            await refresh();
+            router.refresh();
           }}
         />
       );
-    case "pickup_assigned":
-      return (
-        <p className="rounded-xl bg-muted px-4 py-3 text-sm text-muted-foreground">
-          {t.status.pickup_assigned} — {t.driver.pickups}
-        </p>
-      );
+    case "pickup_requested":
+      return info(`${t.status.pickup_requested} — ${t.driver.pickups}`);
     case "picked_up":
-    case "at_shop":
+      return primaryBtn(t.shop.markReceived, () => markReceived(order.id));
+    case "counting":
       return <IntakeForm orderId={order.id} />;
-    case "priced":
-      return (
-        <button
-          onClick={async () => {
-            await startProcessing(order.id);
-            await refresh();
-          }}
-          className="w-full rounded-xl bg-brand px-4 py-3.5 text-base font-bold text-brand-foreground"
-        >
-          {t.shop.startWashing}
-        </button>
-      );
-    case "processing":
+    case "awaiting_payment":
+      return primaryBtn(t.shop.confirmPayment, () => confirmPayment(order.id));
+    case "washing":
+      return primaryBtn(t.shop.markReadyBtn, () => markReady(order.id));
+    case "ready":
       return (
         <DriverPicker
           drivers={drivers}
-          label={t.shop.markReady}
+          label={t.shop.assignDelivery}
           onAssign={async (id) => {
             await assignDeliveryDriver(order.id, id);
-            await refresh();
+            router.refresh();
           }}
         />
       );
-    case "out_for_delivery":
-      return (
-        <p className="rounded-xl bg-muted px-4 py-3 text-sm text-muted-foreground">
-          {t.status.out_for_delivery}
-        </p>
-      );
+    case "delivering":
+      return info(t.status.delivering);
     default:
       return null;
   }

@@ -8,9 +8,9 @@ import {
 } from "@/components/admin/DashboardView";
 import type { OrderStatus } from "@/types/database";
 
-const ACTIVE_PICKUP = "pickup_assigned";
+const ACTIVE_PICKUP = "pickup_requested";
 const PAST_PICKUP: OrderStatus[] = [
-  "picked_up", "at_shop", "priced", "processing", "out_for_delivery", "completed",
+  "picked_up", "counting", "awaiting_payment", "washing", "ready", "delivering", "delivered",
 ];
 
 export default async function AdminDashboard() {
@@ -45,17 +45,17 @@ export default async function AdminDashboard() {
       (o) => o.pickup_driver_id === d.id && PAST_PICKUP.includes(o.status),
     ).length;
     const deliveries = orders.filter(
-      (o) => o.delivery_driver_id === d.id && o.status === "completed",
+      (o) => o.delivery_driver_id === d.id && o.status === "delivered",
     ).length;
     const active = orders.filter(
       (o) =>
         (o.pickup_driver_id === d.id && o.status === ACTIVE_PICKUP) ||
-        (o.delivery_driver_id === d.id && o.status === "out_for_delivery"),
+        (o.delivery_driver_id === d.id && o.status === "delivering"),
     ).length;
     const delayed = orders.filter(
       (o) =>
         o.delivery_driver_id === d.id &&
-        o.status === "completed" &&
+        o.status === "delivered" &&
         o.delivery_date &&
         o.updated_at.slice(0, 10) > o.delivery_date,
     ).length;
@@ -83,15 +83,15 @@ export default async function AdminDashboard() {
   // Alerts engine
   const alerts: AlertItem[] = [];
   for (const o of orders) {
-    if (o.status === "requested") {
+    if (o.status === "new") {
       alerts.push({ kind: "unassigned", ref: o.order_no, href: `/shop/orders/${o.id}` });
     } else if (
-      o.status === "out_for_delivery" &&
+      o.status === "delivering" &&
       o.delivery_date &&
       o.delivery_date < today
     ) {
       alerts.push({ kind: "overdueDelivery", ref: o.order_no, href: `/shop/orders/${o.id}` });
-    } else if (o.status === "picked_up" || o.status === "at_shop") {
+    } else if (o.status === "picked_up" || o.status === "counting") {
       alerts.push({ kind: "waitingAtShop", ref: o.order_no, href: `/shop/orders/${o.id}` });
     }
   }

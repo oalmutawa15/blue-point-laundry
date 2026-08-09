@@ -15,7 +15,7 @@ export default async function HomePage() {
     supabase
       .from("orders")
       .select("*")
-      .not("status", "in", "(completed,cancelled)")
+      .not("status", "in", "(delivered,cancelled)")
       .order("created_at", { ascending: false })
       .limit(1),
   ]);

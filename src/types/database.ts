@@ -164,6 +164,7 @@ export type Database = {
           customer_note: string | null
           delivery_date: string | null
           delivery_driver_id: string | null
+          delivery_photo_url: string | null
           id: string
           order_no: string
           pickup_address_id: string | null
@@ -181,6 +182,7 @@ export type Database = {
           customer_note?: string | null
           delivery_date?: string | null
           delivery_driver_id?: string | null
+          delivery_photo_url?: string | null
           id?: string
           order_no?: string
           pickup_address_id?: string | null
@@ -198,6 +200,7 @@ export type Database = {
           customer_note?: string | null
           delivery_date?: string | null
           delivery_driver_id?: string | null
+          delivery_photo_url?: string | null
           id?: string
           order_no?: string
           pickup_address_id?: string | null
@@ -327,14 +330,15 @@ export type Database = {
     Enums: {
       credit_txn_type: "topup" | "order_charge" | "refund" | "adjustment"
       order_status:
-        | "requested"
-        | "pickup_assigned"
+        | "new"
+        | "pickup_requested"
         | "picked_up"
-        | "at_shop"
-        | "priced"
-        | "processing"
-        | "out_for_delivery"
-        | "completed"
+        | "counting"
+        | "awaiting_payment"
+        | "washing"
+        | "ready"
+        | "delivering"
+        | "delivered"
         | "cancelled"
       payment_status: "pending" | "paid" | "failed" | "cancelled"
       user_role: "customer" | "shop" | "driver" | "admin"

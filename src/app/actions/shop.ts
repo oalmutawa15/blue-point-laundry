@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { notifyPickupAssigned, notifyReadyForDelivery } from "@/lib/notify";
+import type { Database } from "@/types/database";
 
+type OrderStatus = Database["public"]["Enums"]["order_status"];
 type Ok = { ok: true } | { ok: false; error: string };
 
 export type ItemInput = {
@@ -21,15 +23,26 @@ function revalidate(orderId: string) {
   revalidatePath(`/orders/${orderId}`);
 }
 
-// Assign a driver to pick up from the customer.
-export async function assignPickupDriver(
-  orderId: string,
-  driverId: string,
-): Promise<Ok> {
+async function setStatus(orderId: string, status: OrderStatus): Promise<Ok> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("orders")
+    .update({ status })
+    .eq("id", orderId);
+  if (error) {
+    if (/INSUFFICIENT_CREDIT/.test(error.message)) return { ok: false, error: "insufficient_credit" };
+    return { ok: false, error: error.message };
+  }
+  revalidate(orderId);
+  return { ok: true };
+}
+
+// new -> pickup_requested: assign a driver to pick up from the customer.
+export async function assignPickupDriver(orderId: string, driverId: string): Promise<Ok> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("orders")
-    .update({ pickup_driver_id: driverId, status: "pickup_assigned" })
+    .update({ pickup_driver_id: driverId, status: "pickup_requested" })
     .eq("id", orderId)
     .select("order_no")
     .single();
@@ -39,7 +52,12 @@ export async function assignPickupDriver(
   return { ok: true };
 }
 
-// Sign in the clothes: record items, price and delivery date, then send to the customer.
+// picked_up -> counting: clothes received at the shop, ready to be counted.
+export async function markReceived(orderId: string): Promise<Ok> {
+  return setStatus(orderId, "counting");
+}
+
+// counting -> awaiting_payment: record items, price and delivery date.
 export async function saveIntake(
   orderId: string,
   items: ItemInput[],
@@ -70,7 +88,7 @@ export async function saveIntake(
       piece_count: pieces,
       price_fils: total,
       delivery_date: deliveryDate,
-      status: "priced",
+      status: "awaiting_payment",
     })
     .eq("id", orderId);
   if (error) return { ok: false, error: error.message };
@@ -79,27 +97,22 @@ export async function saveIntake(
   return { ok: true };
 }
 
-// Mark the order as being cleaned.
-export async function startProcessing(orderId: string): Promise<Ok> {
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("orders")
-    .update({ status: "processing" })
-    .eq("id", orderId);
-  if (error) return { ok: false, error: error.message };
-  revalidate(orderId);
-  return { ok: true };
+// awaiting_payment -> washing: confirm payment (charges the wallet) and start washing.
+export async function confirmPayment(orderId: string): Promise<Ok> {
+  return setStatus(orderId, "washing");
 }
 
-// Clothes are ready → assign a delivery driver and dispatch.
-export async function assignDeliveryDriver(
-  orderId: string,
-  driverId: string,
-): Promise<Ok> {
+// washing -> ready: clothes are clean and ready for delivery.
+export async function markReady(orderId: string): Promise<Ok> {
+  return setStatus(orderId, "ready");
+}
+
+// ready -> delivering: assign a delivery driver and dispatch.
+export async function assignDeliveryDriver(orderId: string, driverId: string): Promise<Ok> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("orders")
-    .update({ delivery_driver_id: driverId, status: "out_for_delivery" })
+    .update({ delivery_driver_id: driverId, status: "delivering" })
     .eq("id", orderId)
     .select("order_no")
     .single();

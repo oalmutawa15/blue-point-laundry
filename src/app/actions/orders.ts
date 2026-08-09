@@ -32,7 +32,7 @@ export async function createPickupRequest(
       customer_id: user.id,
       pickup_address_id: addressId,
       customer_note: note?.trim() || null,
-      status: "requested",
+      status: "new",
     })
     .select("id, order_no")
     .single();
