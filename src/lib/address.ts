@@ -12,8 +12,8 @@ export function formatAddress(a: Tables<"addresses">, lang: Lang): string {
     parts.push(found ? (lang === "ar" ? found.ar : found.en) : a.area);
   }
   if (a.block) parts.push(`${L("قطعة", "Block")} ${d(a.block)}`);
-  if (a.street) parts.push(`${L("شارع", "St")} ${d(a.street)}`);
-  if (a.building) parts.push(`${L("مبنى", "Bldg")} ${d(a.building)}`);
+  if (a.street) parts.push(`${L("شارع", "Street")} ${d(a.street)}`);
+  if (a.building) parts.push(`${L("منزل", "House")} ${d(a.building)}`);
   if (a.floor) parts.push(`${L("دور", "Floor")} ${a.floor === "0" ? L("أرضي", "G") : d(a.floor)}`);
   if (a.apartment) parts.push(`${L("شقة", "Apt")} ${d(a.apartment)}`);
   return parts.join(lang === "ar" ? "، " : ", ");

@@ -84,9 +84,12 @@ export function DriverOrderDetail({
           </a>
         )}
         {address && (
-          <p className="mt-2 text-sm text-muted-foreground">
-            {formatAddress(address, lang)}
-          </p>
+          <div className="mt-3 rounded-xl bg-muted px-3 py-2.5">
+            <p className="text-xs font-semibold text-muted-foreground">{t.orders.pickupAddress}</p>
+            <p className="mt-0.5 text-sm font-bold text-foreground">
+              {formatAddress(address, lang)}
+            </p>
+          </div>
         )}
         {order.customer_note && (
           <p className="mt-2 rounded-lg bg-muted px-3 py-2 text-sm">
