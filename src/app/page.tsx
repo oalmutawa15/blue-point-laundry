@@ -5,12 +5,14 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLang } from "@/lib/i18n/LanguageProvider";
 import { LanguageToggle } from "@/components/LanguageToggle";
-import { isValidKwPhone } from "@/lib/phone";
+import { isValidPhone, normalizePhone } from "@/lib/phone";
+import { COUNTRIES, DEFAULT_DIAL } from "@/lib/countries";
 import { signInWithPhone, phoneNeedsPassword } from "@/app/actions/auth";
 
 export default function LoginPage() {
-  const { t, dir } = useLang();
+  const { t, dir, lang } = useLang();
   const router = useRouter();
+  const [dial, setDial] = useState(DEFAULT_DIAL);
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [needsPassword, setNeedsPassword] = useState(false);
@@ -18,7 +20,9 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const valid = isValidKwPhone(phone);
+  const valid = isValidPhone(phone, dial);
+  const maxLen = dial === "965" ? 8 : 12;
+  const fullPhone = () => normalizePhone(phone, dial)?.e164 ?? `+${dial}${phone}`;
 
   // As soon as a full, valid number is typed, ask the server whether it's a
   // staff/admin/driver account. If so, reveal the password field right away —
@@ -30,14 +34,15 @@ export default function LoginPage() {
     }
     let active = true;
     const timer = setTimeout(async () => {
-      const staff = await phoneNeedsPassword(phone);
+      const staff = await phoneNeedsPassword(fullPhone());
       if (active) setNeedsPassword(staff);
     }, 400);
     return () => {
       active = false;
       clearTimeout(timer);
     };
-  }, [phone, valid]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phone, dial, valid]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -45,7 +50,7 @@ export default function LoginPage() {
     setError(null);
     if (!valid) return;
     setSubmitting(true);
-    const res = await signInWithPhone(phone, needsPassword ? password : undefined);
+    const res = await signInWithPhone(fullPhone(), needsPassword ? password : undefined);
     if (!res.ok) {
       setSubmitting(false);
       if (res.error === "password_required") {
@@ -100,9 +105,29 @@ export default function LoginPage() {
               className="flex items-stretch overflow-hidden rounded-xl border border-border bg-white focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20"
               dir="ltr"
             >
-              <span className="flex items-center gap-1 bg-muted px-3 text-sm font-semibold text-muted-foreground">
-                🇰🇼 +965
-              </span>
+              <label className="relative flex items-center bg-muted text-sm font-semibold text-muted-foreground">
+                <span className="pointer-events-none flex items-center gap-1 pl-3 pr-2">
+                  {COUNTRIES.find((c) => c.dial === dial)?.flag ?? "🏳️"} +{dial}
+                  <span aria-hidden className="text-xs opacity-60">▾</span>
+                </span>
+                <select
+                  aria-label={t.login.phoneLabel}
+                  value={dial}
+                  onChange={(e) => {
+                    setDial(e.target.value);
+                    setPhone("");
+                    setNeedsPassword(false);
+                    setPassword("");
+                  }}
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                >
+                  {COUNTRIES.map((c) => (
+                    <option key={c.code} value={c.dial}>
+                      {c.flag} {(lang === "ar" ? c.nameAr : c.name)} +{c.dial}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <input
                 id="phone"
                 type="tel"
@@ -111,7 +136,7 @@ export default function LoginPage() {
                 placeholder={t.login.phonePlaceholder}
                 value={phone}
                 onChange={(e) =>
-                  setPhone(e.target.value.replace(/\D/g, "").slice(0, 8))
+                  setPhone(e.target.value.replace(/\D/g, "").slice(0, maxLen))
                 }
                 onBlur={() => setTouched(true)}
                 className="w-full bg-transparent px-3 py-3 text-base tabular-nums outline-none"

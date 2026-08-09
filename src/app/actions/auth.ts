@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { emailForPhone, passwordForPhone } from "@/lib/auth";
-import { normalizeKwPhone } from "@/lib/phone";
+import { normalizeIntlPhone } from "@/lib/phone";
 import { roleHomePath } from "@/lib/roles";
 import type { UserRole } from "@/types/database";
 
@@ -15,7 +15,7 @@ export async function signInWithPhone(
   phoneInput: string,
   loginPassword?: string,
 ): Promise<Result> {
-  const norm = normalizeKwPhone(phoneInput);
+  const norm = normalizeIntlPhone(phoneInput);
   if (!norm) return { ok: false, error: "invalid_phone" };
 
   const admin = createAdminClient();
@@ -70,7 +70,7 @@ export async function signInWithPhone(
 // staff/admin/driver account (which needs a password)? Customers → false, so
 // the password field only appears for the three staff roles.
 export async function phoneNeedsPassword(phoneInput: string): Promise<boolean> {
-  const norm = normalizeKwPhone(phoneInput);
+  const norm = normalizeIntlPhone(phoneInput);
   if (!norm) return false;
   const admin = createAdminClient();
   const { data: check } = await admin.rpc("check_staff_login", {
