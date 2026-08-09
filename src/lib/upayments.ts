@@ -111,11 +111,14 @@ async function upaymentsPaymentState(idOrSession: string): Promise<PaymentState>
       if (result === "CAPTURED" || ["success", "done", "captured", "paid"].includes(status)) {
         return "paid";
       }
+      // Only DEFINITIVE failures count as failed. "NOT CAPTURED" is a transient
+      // pre-capture state (capture often lands via the webhook a moment later),
+      // so it stays pending and we keep polling.
       if (
-        result.startsWith("NOT") ||
         result.includes("FAIL") ||
         result.includes("DECLIN") ||
-        ["failed", "declined", "canceled", "cancelled", "error", "expired"].includes(status)
+        result.includes("CANCEL") ||
+        ["failed", "declined", "canceled", "cancelled", "error", "expired", "voided"].includes(status)
       ) {
         return "failed";
       }

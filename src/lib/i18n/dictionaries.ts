@@ -67,6 +67,15 @@ export const dictionaries = {
       send: "إرسال",
       error: "تعذّر الرد الآن، حاول مرة أخرى.",
     },
+    payResult: {
+      approved: "تمت العملية بنجاح",
+      failed: "فشلت العملية",
+      confirming: "جارٍ تأكيد الدفع…",
+      addedToWallet: "تمت إضافة {amount} إلى رصيدك",
+      failedNote: "لم تتم عملية الدفع. لم يُخصم أي مبلغ.",
+      confirmingNote: "نؤكد عملية الدفع، سيتم تحديث رصيدك خلال لحظات.",
+      backToWallet: "العودة إلى الرصيد",
+    },
     preferences: {
       title: "التفضيلات",
       subtitle: "اختر تفضيلاتك المفضلة لملابسك",
@@ -516,6 +525,15 @@ export const dictionaries = {
       placeholder: "Type your message…",
       send: "Send",
       error: "Couldn't respond right now, please try again.",
+    },
+    payResult: {
+      approved: "Payment approved",
+      failed: "Payment failed",
+      confirming: "Confirming your payment…",
+      addedToWallet: "{amount} was added to your wallet",
+      failedNote: "The payment didn't go through. You weren't charged.",
+      confirmingNote: "We're confirming your payment — your balance will update shortly.",
+      backToWallet: "Back to wallet",
     },
     preferences: {
       title: "Preferences",

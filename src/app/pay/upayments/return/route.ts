@@ -2,31 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { finalizeUpayments } from "@/lib/upayments";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 15;
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-// UPayments redirects the customer's browser here after payment. Capture can lag
-// the redirect by a second or two, so poll a few times before deciding — and only
-// show "failed" on a definitive failure, never on a not-yet-settled payment.
+// UPayments redirects the customer's browser here after payment. We try to
+// finalize once (it's idempotent) and then hand off to the result screen, which
+// polls until the payment is definitively approved or failed — so a capture that
+// lands via the webhook a moment later still shows as "approved".
 export async function GET(req: NextRequest) {
   const paymentId = req.nextUrl.searchParams.get("payment");
-  let outcome: "success" | "failed" | "pending" = "pending";
+  if (!paymentId) return NextResponse.redirect(new URL("/credit", req.url));
 
-  if (paymentId) {
-    for (let attempt = 0; attempt < 4; attempt++) {
-      const result = await finalizeUpayments(paymentId);
-      if (result === "paid" || result === "already") {
-        outcome = "success";
-        break;
-      }
-      if (result === "failed") {
-        outcome = "failed";
-        break;
-      }
-      if (attempt < 3) await sleep(1200); // pending → give capture a moment, then retry
-    }
+  try {
+    await finalizeUpayments(paymentId);
+  } catch {
+    // the result screen will keep polling regardless
   }
 
-  return NextResponse.redirect(new URL(`/credit?topup=${outcome}`, req.url));
+  return NextResponse.redirect(new URL(`/pay/result?payment=${paymentId}`, req.url));
 }
