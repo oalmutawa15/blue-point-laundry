@@ -1,12 +1,31 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useLang } from "@/lib/i18n/LanguageProvider";
 import { formatAddress, mapsUrl } from "@/lib/address";
+import { markPickedUp } from "@/app/actions/driver";
 import type { OrderWithRelations } from "@/lib/orderTypes";
 
 function JobCard({ order, kind }: { order: OrderWithRelations; kind: "pickup" | "delivery" }) {
   const { t, lang } = useLang();
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function pickUp() {
+    setBusy(true);
+    setError(null);
+    const res = await markPickedUp(order.id);
+    if (!res.ok) {
+      setBusy(false);
+      setError(res.error);
+      return;
+    }
+    router.refresh();
+  }
+
   return (
     <div className="rounded-2xl bg-card p-4 shadow-sm">
       <div className="flex items-center justify-between">
@@ -41,6 +60,19 @@ function JobCard({ order, kind }: { order: OrderWithRelations; kind: "pickup" | 
           </a>
         )}
       </div>
+
+      {/* Pickup drivers can confirm collection straight from the card. */}
+      {kind === "pickup" && (
+        <button
+          type="button"
+          onClick={pickUp}
+          disabled={busy}
+          className="mt-2 w-full rounded-xl bg-success px-4 py-2.5 text-center text-sm font-bold text-white disabled:opacity-50"
+        >
+          {busy ? t.common.loading : t.driver.markPickedUp}
+        </button>
+      )}
+      {error && <p className="mt-2 text-sm font-semibold text-danger">{error}</p>}
     </div>
   );
 }
