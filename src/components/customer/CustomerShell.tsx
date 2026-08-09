@@ -86,7 +86,7 @@ export function CustomerShell({
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto flex w-full max-w-7xl">
+      <div className="flex w-full">
         {/* Desktop sidebar */}
         <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-brand p-5 text-brand-foreground lg:flex">
           <Link href="/home" className="mb-6 flex items-center gap-2">
@@ -188,7 +188,7 @@ export function CustomerShell({
             </div>
           )}
 
-          <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-5 pb-24 lg:px-8 lg:py-8 lg:pb-8">
+          <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-5 pb-24 lg:px-10 lg:py-8 lg:pb-8">
             {children}
           </main>
         </div>

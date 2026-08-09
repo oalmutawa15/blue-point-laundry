@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSessionProfile } from "@/lib/auth";
 import { roleHomePath } from "@/lib/roles";
-import { StaffTopBar } from "@/components/StaffTopBar";
+import { ShopShell } from "@/components/shop/ShopShell";
 
 export default async function ShopLayout({
   children,
@@ -14,10 +14,5 @@ export default async function ShopLayout({
     redirect(roleHomePath(profile.role));
   }
 
-  return (
-    <div className="mx-auto min-h-screen max-w-6xl bg-background">
-      <StaffTopBar area="shop" home="/shop" />
-      <main className="px-4 py-5">{children}</main>
-    </div>
-  );
+  return <ShopShell>{children}</ShopShell>;
 }
