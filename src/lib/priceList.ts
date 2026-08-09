@@ -1,0 +1,118 @@
+// Blue Point Laundry price list. Prices are integer fils (1 KWD = 1000 fils),
+// transcribed from the official Blue Point price sheets.
+//
+// Most garments have three service prices: washing+ironing, dryclean+ironing,
+// and iron-only. A price of null means the service isn't offered for that item.
+// "Cleaning" items (shoes/bags) have a single "starting from" price.
+
+export type ServicePrices = {
+  wash: number | null; // washing & ironing
+  dryclean: number | null; // dryclean & ironing
+  iron: number | null; // iron only
+};
+
+export type PriceItem = {
+  key: string;
+  en: string;
+  ar: string;
+  prices?: ServicePrices; // for garments
+  from?: number; // for cleaning items (single "starting from" price)
+};
+
+export type PriceCategory = {
+  key: string;
+  en: string;
+  ar: string;
+  kind: "garment" | "cleaning";
+  items: PriceItem[];
+};
+
+const p = (wash: number | null, dryclean: number | null, iron: number | null): ServicePrices => ({
+  wash,
+  dryclean,
+  iron,
+});
+
+export const PRICE_CATEGORIES: PriceCategory[] = [
+  {
+    key: "men",
+    en: "Men",
+    ar: "رجالي",
+    kind: "garment",
+    items: [
+      { key: "dishdasha_summer", en: "Summer Dishdasha", ar: "دشداشة صيفية", prices: p(700, 750, 400) },
+      { key: "dishdasha_winter", en: "Winter Dishdasha", ar: "دشداشة شتوية", prices: p(900, 900, 500) },
+      { key: "ghutra", en: "Ghutra / Shemagh", ar: "غترة / شماغ", prices: p(400, 500, 300) },
+      { key: "shirt", en: "Shirt", ar: "قميص", prices: p(600, 750, 300) },
+      { key: "tshirt", en: "T-Shirt", ar: "تي شرت", prices: p(600, 1000, 300) },
+      { key: "short", en: "Short", ar: "شورت", prices: p(500, 750, 250) },
+      { key: "sports_shirt", en: "Sports Shirt", ar: "قميص رياضي", prices: p(900, 1000, 500) },
+      { key: "sweatpants", en: "Sweatpants", ar: "بنطلون رياضي", prices: p(600, 750, 300) },
+      { key: "tracksuit", en: "Tracksuit", ar: "بدلة رياضة", prices: p(1500, 1750, 800) },
+      { key: "military_suit", en: "Military Suit", ar: "بدلة عسكرية", prices: p(2000, 2000, 1000) },
+      { key: "jacket", en: "Jacket", ar: "جاكيت", prices: p(1500, 1500, 750) },
+      { key: "men_suit_2", en: "Men Suit (2 pcs)", ar: "بدلة رجالية (قطعتين)", prices: p(2000, 2000, 1250) },
+      { key: "men_suit_3", en: "Men Suit (3 pcs)", ar: "بدلة رجالية (٣ قطع)", prices: p(2500, 2500, 1500) },
+      { key: "overcoat", en: "Over Coat", ar: "بالطو", prices: p(2000, 2500, 1250) },
+      { key: "tie", en: "Tie", ar: "ربطة عنق", prices: p(500, 500, 250) },
+      { key: "cap", en: "Cap", ar: "طاقية / قحفية", prices: p(100, null, null) },
+    ],
+  },
+  {
+    key: "women",
+    en: "Women",
+    ar: "نسائي",
+    kind: "garment",
+    items: [
+      { key: "dress", en: "Normal Dress", ar: "فستان عادي", prices: p(1500, 1500, 750) },
+      { key: "blouse", en: "Normal Blouse", ar: "بلوزة عادية", prices: p(750, 1000, 400) },
+      { key: "blouse_silk", en: "Silk Blouse", ar: "بلوزة حرير", prices: p(1250, 1250, 600) },
+      { key: "skirt", en: "Normal Skirt", ar: "تنورة عادية", prices: p(1000, 1250, 600) },
+      { key: "skirt_silk", en: "Silk Skirt", ar: "تنورة حرير", prices: p(1500, 1500, 1000) },
+      { key: "ladies_suit_2", en: "Ladies Suit (2 pcs)", ar: "بدلة نسائية (قطعتين)", prices: p(2000, 1250, 1250) },
+      { key: "abaya", en: "Abaya", ar: "عباية", prices: p(1250, 2000, 750) },
+      { key: "hijab", en: "Scarf / Hijab", ar: "حجاب", prices: p(600, 750, 350) },
+    ],
+  },
+  {
+    key: "children",
+    en: "Children",
+    ar: "أطفال",
+    kind: "garment",
+    items: [
+      { key: "child_pieces", en: "Children's Pieces", ar: "قطع للأطفال", prices: p(400, 600, 250) },
+      { key: "child_jacket", en: "Children's Jacket", ar: "جاكيت أطفال", prices: p(750, 1000, 500) },
+    ],
+  },
+  {
+    key: "household",
+    en: "Household",
+    ar: "منزلي",
+    kind: "garment",
+    items: [
+      { key: "duvet_single", en: "Duvet / Blanket (Single)", ar: "لحاف / بطانية (مفرد)", prices: p(2000, 2000, null) },
+      { key: "duvet_double", en: "Duvet / Blanket (Double)", ar: "لحاف / بطانية (مزدوج)", prices: p(2500, 2500, null) },
+      { key: "sheet_single", en: "Bed Sheet (Single)", ar: "شرشف (مفرد)", prices: p(750, 1000, 400) },
+      { key: "sheet_double", en: "Bed Sheet (Double)", ar: "شرشف (مزدوج)", prices: p(1000, 1250, 600) },
+      { key: "pillow", en: "Pillow", ar: "مخدة", prices: p(750, 1000, null) },
+      { key: "pillow_case", en: "Pillow Case", ar: "وجه مخدة", prices: p(300, 500, 250) },
+    ],
+  },
+  {
+    key: "cleaning",
+    en: "Cleaning",
+    ar: "تنظيف",
+    kind: "cleaning",
+    items: [
+      { key: "shoe_regular", en: "Regular Shoe Cleaning", ar: "تنظيف حذاء عادي", from: 3000 },
+      { key: "shoe_suede", en: "Suede Shoe Cleaning (brand)", ar: "تنظيف حذاء شامواه (ماركة)", from: 7000 },
+      { key: "shoe_extension", en: "Shoe Extension", ar: "توسعة حذاء", from: 5000 },
+      { key: "bag_small", en: "Bag Cleaning (Small)", ar: "تنظيف شنطة (صغير)", from: 10000 },
+      { key: "bag_big", en: "Bag Cleaning (Big)", ar: "تنظيف شنطة (كبير)", from: 20000 },
+      { key: "bag_travel", en: "Travel Bag Cleaning", ar: "تنظيف شنطة سفر", from: 9000 },
+      { key: "bag_dressing", en: "Bag Dressing", ar: "تلبيس شنطة", from: 10000 },
+      { key: "cap_cleaning", en: "Cap Cleaning", ar: "تنظيف كاب", from: 2500 },
+      { key: "belt_cleaning", en: "Belt Cleaning", ar: "تنظيف حزام", from: 5000 },
+    ],
+  },
+];

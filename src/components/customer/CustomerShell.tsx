@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useLang } from "@/lib/i18n/LanguageProvider";
 import { LanguageToggle } from "@/components/LanguageToggle";
@@ -9,7 +10,9 @@ import { formatMoney } from "@/lib/money";
 import { signOut } from "@/app/actions/auth";
 import type { ReactNode } from "react";
 
-function NavIcon({ name }: { name: "home" | "orders" | "addresses" | "credit" }) {
+type IconName = "home" | "orders" | "addresses" | "credit" | "prices" | "locations";
+
+function NavIcon({ name }: { name: IconName }) {
   const c = "h-6 w-6";
   switch (name) {
     case "home":
@@ -20,6 +23,10 @@ function NavIcon({ name }: { name: "home" | "orders" | "addresses" | "credit" })
       return <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11Z" /><circle cx="12" cy="10" r="2.5" /></svg>;
     case "credit":
       return <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="6" width="18" height="12" rx="2" /><path d="M3 10h18" /></svg>;
+    case "prices":
+      return <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4l11 11a2 2 0 0 0 3 0l4-4a2 2 0 0 0 0-3L10 2Z" /><circle cx="7.5" cy="7.5" r="1" fill="currentColor" /></svg>;
+    case "locations":
+      return <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11Z" /><circle cx="12" cy="10" r="2.5" /></svg>;
   }
 }
 
@@ -47,12 +54,17 @@ export function CustomerShell({
   const { t, lang } = useLang();
   const pathname = usePathname();
   const router = useRouter();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const nav = [
     { href: "/home", label: t.nav.home, icon: "home" as const },
     { href: "/orders", label: t.nav.orders, icon: "orders" as const },
     { href: "/addresses", label: t.nav.addresses, icon: "addresses" as const },
     { href: "/credit", label: t.nav.credit, icon: "credit" as const },
+  ];
+  const moreNav = [
+    { href: "/prices", label: t.nav.prices, icon: "prices" as const },
+    { href: "/locations", label: t.nav.locations, icon: "locations" as const },
   ];
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
 
@@ -82,7 +94,7 @@ export function CustomerShell({
           </Link>
 
           <nav className="flex flex-1 flex-col gap-1">
-            {nav.map((item) => (
+            {[...nav, ...moreNav].map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -114,16 +126,64 @@ export function CustomerShell({
         <div className="flex min-w-0 flex-1 flex-col">
           {/* Mobile top bar */}
           <header className="sticky top-0 z-20 flex items-center justify-between gap-2 bg-brand px-4 py-3 text-brand-foreground lg:hidden">
-            <Link href="/home" className="flex items-center gap-2">
-              <Image src="/blue-point-logo.png" alt={t.brandFull} width={36} height={36} className="h-8 w-8 rounded object-contain" />
-              <span className="text-base font-extrabold">{t.brand}</span>
-            </Link>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setMenuOpen(true)}
+                aria-label={t.nav.more}
+                className="rounded-lg p-1.5 text-white transition-colors hover:bg-white/10"
+              >
+                <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+              </button>
+              <Link href="/home" className="flex items-center gap-2">
+                <Image src="/blue-point-logo.png" alt={t.brandFull} width={36} height={36} className="h-8 w-8 rounded object-contain" />
+                <span className="text-base font-extrabold">{t.brand}</span>
+              </Link>
+            </div>
             <div className="flex items-center gap-2">
               <CreditChip creditFils={creditFils} />
               <LanguageToggle />
               <SignOutBtn className="rounded-full p-2 text-white/80 transition-colors hover:bg-white/10" />
             </div>
           </header>
+
+          {/* Mobile slide-in drawer */}
+          {menuOpen && (
+            <div className="fixed inset-0 z-40 lg:hidden">
+              <button
+                type="button"
+                aria-label="close"
+                onClick={() => setMenuOpen(false)}
+                className="absolute inset-0 bg-black/40"
+              />
+              <div className="absolute inset-y-0 start-0 flex w-72 max-w-[80%] flex-col bg-card p-5 shadow-xl">
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Image src="/blue-point-logo.png" alt={t.brandFull} width={36} height={36} className="h-9 w-9 rounded object-contain" />
+                    <span className="text-base font-extrabold text-brand">{t.brand}</span>
+                  </div>
+                  <button type="button" onClick={() => setMenuOpen(false)} aria-label="close" className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted">
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                  </button>
+                </div>
+                <nav className="flex flex-col gap-1">
+                  {[...nav, ...moreNav].map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setMenuOpen(false)}
+                      className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-bold transition-colors ${
+                        isActive(item.href) ? "bg-brand/10 text-brand" : "text-foreground hover:bg-muted"
+                      }`}
+                    >
+                      <NavIcon name={item.icon} />
+                      {item.label}
+                    </Link>
+                  ))}
+                </nav>
+              </div>
+            </div>
+          )}
 
           <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-5 pb-24 lg:px-8 lg:py-8 lg:pb-8">
             {children}

@@ -49,6 +49,26 @@ export const dictionaries = {
       orders: "الطلبات",
       addresses: "العناوين",
       credit: "الرصيد",
+      prices: "قائمة الأسعار",
+      locations: "مواقعنا",
+      more: "المزيد",
+    },
+    prices: {
+      title: "قائمة الأسعار",
+      subtitle: "أسعار خدماتنا لكل قطعة",
+      item: "الصنف",
+      wash: "غسيل وكي",
+      dryclean: "تنظيف جاف",
+      iron: "كي فقط",
+      startingFrom: "يبدأ من",
+      currencyNote: "الأسعار بالدينار الكويتي",
+      kd: "د.ك",
+    },
+    locations: {
+      title: "مواقعنا",
+      subtitle: "مصبغة بلو بوينت",
+      openInMaps: "افتح في خرائط جوجل",
+      call: "اتصل بنا",
     },
 
     home: {
@@ -368,6 +388,26 @@ export const dictionaries = {
       orders: "Orders",
       addresses: "Addresses",
       credit: "Credit",
+      prices: "Price List",
+      locations: "Our Locations",
+      more: "More",
+    },
+    prices: {
+      title: "Price List",
+      subtitle: "Our service prices per item",
+      item: "Item",
+      wash: "Wash & Iron",
+      dryclean: "Dryclean",
+      iron: "Iron only",
+      startingFrom: "Starting from",
+      currencyNote: "Prices are in Kuwaiti Dinar (KWD)",
+      kd: "KD",
+    },
+    locations: {
+      title: "Our Locations",
+      subtitle: "Blue Point Laundry",
+      openInMaps: "Open in Google Maps",
+      call: "Call us",
     },
 
     home: {
