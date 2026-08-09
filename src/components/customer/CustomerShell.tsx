@@ -8,6 +8,7 @@ import { useLang } from "@/lib/i18n/LanguageProvider";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { formatMoney } from "@/lib/money";
 import { signOut } from "@/app/actions/auth";
+import { ChatWidget } from "./ChatWidget";
 import type { ReactNode } from "react";
 
 type IconName = "home" | "orders" | "addresses" | "credit" | "prices" | "locations" | "profile" | "preferences" | "offers";
@@ -228,6 +229,8 @@ export function CustomerShell({
           })}
         </div>
       </nav>
+
+      <ChatWidget />
     </div>
   );
 }

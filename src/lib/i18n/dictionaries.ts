@@ -59,6 +59,14 @@ export const dictionaries = {
       offers: "العروض",
       more: "المزيد",
     },
+    chat: {
+      title: "مساعد بلو بوينت",
+      subtitle: "نجيب على أسئلتك",
+      greeting: "أهلاً! كيف أقدر أساعدك؟ اسألني عن حالة طلبك، الأسعار، وقت التسليم، أو موقعنا.",
+      placeholder: "اكتب رسالتك…",
+      send: "إرسال",
+      error: "تعذّر الرد الآن، حاول مرة أخرى.",
+    },
     preferences: {
       title: "التفضيلات",
       subtitle: "اختر تفضيلاتك المفضلة لملابسك",
@@ -479,6 +487,14 @@ export const dictionaries = {
       preferences: "Preferences",
       offers: "Offers",
       more: "More",
+    },
+    chat: {
+      title: "Blue Point Assistant",
+      subtitle: "Here to answer your questions",
+      greeting: "Hi! How can I help? Ask me about your order status, prices, delivery time, or our location.",
+      placeholder: "Type your message…",
+      send: "Send",
+      error: "Couldn't respond right now, please try again.",
     },
     preferences: {
       title: "Preferences",
