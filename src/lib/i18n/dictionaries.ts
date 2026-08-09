@@ -74,6 +74,8 @@ export const dictionaries = {
       addedToWallet: "تمت إضافة {amount} إلى رصيدك",
       failedNote: "لم تتم عملية الدفع. لم يُخصم أي مبلغ.",
       confirmingNote: "نؤكد عملية الدفع، سيتم تحديث رصيدك خلال لحظات.",
+      pending: "الدفع قيد المعالجة",
+      pendingNote: "لم يتم تأكيد الدفع بعد. إذا تم خصم المبلغ فسيظهر في رصيدك قريبًا.",
       backToWallet: "العودة إلى الرصيد",
     },
     preferences: {
@@ -533,6 +535,8 @@ export const dictionaries = {
       addedToWallet: "{amount} was added to your wallet",
       failedNote: "The payment didn't go through. You weren't charged.",
       confirmingNote: "We're confirming your payment — your balance will update shortly.",
+      pending: "Payment is processing",
+      pendingNote: "We couldn't confirm the payment yet. If you were charged, it will appear in your wallet shortly.",
       backToWallet: "Back to wallet",
     },
     preferences: {
