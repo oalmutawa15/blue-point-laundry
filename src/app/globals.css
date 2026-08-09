@@ -54,6 +54,17 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  /* Never let a stray wide element cause the whole page to scroll sideways on
+     phones — wide content (tables, chips) scrolls inside its own container. */
+  overflow-x: hidden;
+}
+
+/* Media/embeds never overflow their container on small screens. */
+img,
+svg,
+video,
+iframe {
+  max-width: 100%;
 }
 
 /* Numbers stay legible/aligned in both directions */
