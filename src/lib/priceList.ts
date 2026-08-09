@@ -116,3 +116,34 @@ export const PRICE_CATEGORIES: PriceCategory[] = [
     ],
   },
 ];
+
+export type PriceService = "wash" | "dryclean" | "iron";
+
+export type FlatPriceItem = PriceItem & {
+  categoryKey: string;
+  categoryEn: string;
+  categoryAr: string;
+  kind: PriceCategory["kind"];
+};
+
+// All price-list items flattened, tagged with their category — for the shop search.
+export function allPriceItems(): FlatPriceItem[] {
+  return PRICE_CATEGORIES.flatMap((c) =>
+    c.items.map((it) => ({
+      ...it,
+      categoryKey: c.key,
+      categoryEn: c.en,
+      categoryAr: c.ar,
+      kind: c.kind,
+    })),
+  );
+}
+
+// The unit price (fils) for an item + service. Cleaning items ignore the service.
+export function priceForItem(
+  item: { prices?: ServicePrices; from?: number },
+  service: PriceService,
+): number | null {
+  if (item.from != null) return item.from;
+  return item.prices ? item.prices[service] : null;
+}

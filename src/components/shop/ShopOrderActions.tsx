@@ -1,9 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLang } from "@/lib/i18n/LanguageProvider";
-import { kwdToFils, formatMoney } from "@/lib/money";
+import { kwdToFils, filsToKwd, formatMoney } from "@/lib/money";
+import {
+  allPriceItems,
+  priceForItem,
+  type FlatPriceItem,
+  type PriceService,
+} from "@/lib/priceList";
 import {
   assignPickupDriver,
   assignDeliveryDriver,
@@ -16,9 +22,85 @@ import {
 import type { Tables } from "@/types/database";
 import type { DriverLite } from "@/lib/orderTypes";
 
-type ItemRow = { garment: string; service: string; qty: number; priceKwd: string };
+type ItemRow = {
+  garment: string;
+  item: FlatPriceItem | null;
+  service: PriceService;
+  qty: number;
+  priceKwd: string;
+};
 
-const SERVICES = ["wash", "iron", "wash_iron", "dry_clean"] as const;
+const SERVICES: PriceService[] = ["wash", "dryclean", "iron"];
+
+// Searchable item picker backed by the Blue Point price list.
+function ItemPicker({
+  value,
+  onText,
+  onSelect,
+}: {
+  value: string;
+  onText: (text: string) => void;
+  onSelect: (item: FlatPriceItem) => void;
+}) {
+  const { t, lang } = useLang();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const name = (o: { en: string; ar: string }) => (lang === "ar" ? o.ar : o.en);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  const q = value.trim().toLowerCase();
+  const items = allPriceItems();
+  const filtered = q
+    ? items.filter((it) => it.en.toLowerCase().includes(q) || it.ar.includes(value.trim()))
+    : items;
+
+  return (
+    <div ref={ref} className="relative">
+      <input
+        value={value}
+        onChange={(e) => {
+          onText(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        placeholder={t.shop.garmentPlaceholder}
+        className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-brand"
+      />
+      {open && (
+        <ul className="absolute z-50 mt-1 max-h-56 w-full overflow-auto rounded-xl border border-border bg-white py-1 shadow-xl">
+          {filtered.length === 0 && (
+            <li className="px-3 py-2 text-sm text-muted-foreground">{t.shop.noMatch}</li>
+          )}
+          {filtered.map((it) => (
+            <li key={`${it.categoryKey}-${it.key}`}>
+              <button
+                type="button"
+                onClick={() => {
+                  onSelect(it);
+                  setOpen(false);
+                }}
+                className="flex w-full items-center justify-between gap-2 px-3 py-2 text-start text-sm hover:bg-muted"
+              >
+                <span className="font-medium">{name(it)}</span>
+                <span className="text-xs text-muted-foreground">
+                  {lang === "ar" ? it.categoryAr : it.categoryEn}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 function DriverPicker({
   drivers,
@@ -65,9 +147,8 @@ function DriverPicker({
 function IntakeForm({ orderId }: { orderId: string }) {
   const { t, lang } = useLang();
   const router = useRouter();
-  const [rows, setRows] = useState<ItemRow[]>([
-    { garment: "", service: "wash", qty: 1, priceKwd: "" },
-  ]);
+  const emptyRow: ItemRow = { garment: "", item: null, service: "wash", qty: 1, priceKwd: "" };
+  const [rows, setRows] = useState<ItemRow[]>([{ ...emptyRow }]);
   const [deliveryDate, setDeliveryDate] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -78,6 +159,24 @@ function IntakeForm({ orderId }: { orderId: string }) {
 
   function update(i: number, patch: Partial<ItemRow>) {
     setRows((rs) => rs.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  }
+
+  // Auto-fill the price from the price list for the given item + service.
+  function autoPriceKwd(item: FlatPriceItem | null, service: PriceService): string | null {
+    if (!item) return null;
+    const fils = priceForItem(item, service);
+    return fils == null ? null : filsToKwd(fils);
+  }
+
+  function pickItem(i: number, item: FlatPriceItem) {
+    const name = lang === "ar" ? item.ar : item.en;
+    const price = autoPriceKwd(item, rows[i].service);
+    update(i, { item, garment: name, ...(price != null ? { priceKwd: price } : {}) });
+  }
+
+  function changeService(i: number, service: PriceService) {
+    const price = autoPriceKwd(rows[i].item, service);
+    update(i, { service, ...(price != null ? { priceKwd: price } : {}) });
   }
 
   async function submit() {
@@ -100,16 +199,17 @@ function IntakeForm({ orderId }: { orderId: string }) {
 
       {rows.map((r, i) => (
         <div key={i} className="rounded-xl border border-border p-3">
-          <input
-            value={r.garment}
-            onChange={(e) => update(i, { garment: e.target.value })}
-            placeholder={t.shop.garmentPlaceholder}
-            className="mb-2 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-brand"
-          />
+          <div className="mb-2">
+            <ItemPicker
+              value={r.garment}
+              onText={(text) => update(i, { garment: text, item: null })}
+              onSelect={(item) => pickItem(i, item)}
+            />
+          </div>
           <div className="grid grid-cols-3 gap-2">
             <select
               value={r.service}
-              onChange={(e) => update(i, { service: e.target.value })}
+              onChange={(e) => changeService(i, e.target.value as PriceService)}
               className="rounded-lg border border-border bg-white px-2 py-2 text-sm outline-none focus:border-brand"
             >
               {SERVICES.map((s) => (
@@ -148,9 +248,7 @@ function IntakeForm({ orderId }: { orderId: string }) {
       ))}
 
       <button
-        onClick={() =>
-          setRows((rs) => [...rs, { garment: "", service: "wash", qty: 1, priceKwd: "" }])
-        }
+        onClick={() => setRows((rs) => [...rs, { ...emptyRow }])}
         className="w-full rounded-xl border border-dashed border-border py-2.5 text-sm font-semibold text-brand"
       >
         + {t.shop.addItem}
