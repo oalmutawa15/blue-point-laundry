@@ -395,13 +395,20 @@ function CancelBox({ order }: { order: Tables<"orders"> }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function doCancel() {
+  // Only offer a refund choice when there's actually money to refund.
+  const paid = order.charged === true && (order.price_fils ?? 0) > 0;
+
+  async function doCancel(refund: boolean) {
+    if (!reason.trim()) {
+      setError(t.shop.reasonRequired);
+      return;
+    }
     setBusy(true);
     setError(null);
-    const res = await cancelOrder(order.id, reason);
+    const res = await cancelOrder(order.id, reason, refund);
     if (!res.ok) {
       setBusy(false);
-      setError(res.error);
+      setError(res.error === "reason_required" ? t.shop.reasonRequired : res.error);
       return;
     }
     router.push(`/shop/orders/${order.id}/receipt`);
@@ -421,31 +428,65 @@ function CancelBox({ order }: { order: Tables<"orders"> }) {
   }
 
   return (
-    <div className="space-y-2 rounded-2xl border border-danger/40 p-3">
+    <div className="space-y-3 rounded-2xl border border-danger/40 p-3">
       <p className="text-sm font-bold text-danger">{t.shop.cancelOrder}</p>
-      <textarea
-        value={reason}
-        onChange={(e) => setReason(e.target.value)}
-        placeholder={t.shop.cancelReason}
-        rows={2}
-        className="w-full resize-none rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-brand"
-      />
-      {error && <p className="text-sm font-semibold text-danger">{error}</p>}
-      <div className="flex gap-2">
-        <button
-          onClick={doCancel}
-          disabled={busy}
-          className="flex-1 rounded-lg bg-danger px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
-        >
-          {busy ? t.common.loading : t.shop.confirmCancel}
-        </button>
-        <button
-          onClick={() => setOpenBox(false)}
-          className="rounded-lg border border-border px-4 py-2.5 text-sm font-semibold"
-        >
-          {t.common.cancel}
-        </button>
+      <div>
+        <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+          {t.shop.cancelReason} <span className="text-danger">*</span>
+        </label>
+        <textarea
+          value={reason}
+          onChange={(e) => {
+            setReason(e.target.value);
+            if (error) setError(null);
+          }}
+          placeholder={t.shop.cancelReasonPlaceholder}
+          rows={2}
+          className="w-full resize-none rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-brand"
+        />
       </div>
+      {error && <p className="text-sm font-semibold text-danger">{error}</p>}
+
+      {paid ? (
+        <div className="space-y-2">
+          <button
+            onClick={() => doCancel(true)}
+            disabled={busy}
+            className="w-full rounded-lg bg-danger px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+          >
+            {busy ? t.common.loading : t.shop.cancelWithRefund}
+          </button>
+          <button
+            onClick={() => doCancel(false)}
+            disabled={busy}
+            className="w-full rounded-lg border border-danger/50 px-4 py-2.5 text-sm font-bold text-danger disabled:opacity-50"
+          >
+            {t.shop.cancelNoRefund}
+          </button>
+          <button
+            onClick={() => setOpenBox(false)}
+            className="w-full rounded-lg border border-border px-4 py-2 text-sm font-semibold"
+          >
+            {t.common.cancel}
+          </button>
+        </div>
+      ) : (
+        <div className="flex gap-2">
+          <button
+            onClick={() => doCancel(false)}
+            disabled={busy}
+            className="flex-1 rounded-lg bg-danger px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+          >
+            {busy ? t.common.loading : t.shop.confirmCancel}
+          </button>
+          <button
+            onClick={() => setOpenBox(false)}
+            className="rounded-lg border border-border px-4 py-2.5 text-sm font-semibold"
+          >
+            {t.common.cancel}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -130,8 +130,12 @@ export async function assignDeliveryDriver(orderId: string, driverId: string): P
 // counter (no wallet change). Orders that weren't paid yet refund nothing.
 export async function cancelOrder(
   orderId: string,
-  reason?: string,
+  reason: string,
+  refund: boolean,
 ): Promise<{ ok: true; refundFils: number; refundType: RefundType } | { ok: false; error: string }> {
+  const cleanReason = reason?.trim();
+  if (!cleanReason) return { ok: false, error: "reason_required" };
+
   const admin = createAdminClient();
   const { data: order } = await admin
     .from("orders")
@@ -141,40 +145,45 @@ export async function cancelOrder(
   if (!order) return { ok: false, error: "not_found" };
   if (order.status === "cancelled") return { ok: false, error: "already_cancelled" };
 
-  // Was this order charged to the wallet?
-  const { data: charge } = await admin
-    .from("credit_transactions")
-    .select("id")
-    .eq("order_id", orderId)
-    .eq("type", "order_charge")
-    .maybeSingle();
-
   const price = order.price_fils ?? 0;
   let refundFils = 0;
   let refundType: RefundType = "none";
+  let newCharged = order.charged; // keep as-is unless we refund
 
-  if (charge && price > 0) {
-    // Paid from the wallet → refund to the wallet (idempotent per order).
-    await admin.rpc("wallet_refund", {
-      p_customer: order.customer_id,
-      p_amount: price,
-      p_order: orderId,
-      p_note: `Refund for ${order.order_no}`,
-    });
+  if (refund && order.charged && price > 0) {
+    // Was this order charged to the wallet?
+    const { data: charge } = await admin
+      .from("credit_transactions")
+      .select("id")
+      .eq("order_id", orderId)
+      .eq("type", "order_charge")
+      .maybeSingle();
+
+    if (charge) {
+      // Paid from the wallet → refund to the wallet (idempotent per order).
+      await admin.rpc("wallet_refund", {
+        p_customer: order.customer_id,
+        p_amount: price,
+        p_order: orderId,
+        p_note: `Refund for ${order.order_no}`,
+      });
+      refundType = "wallet";
+    } else {
+      // Paid in cash at the counter (walk-in) → cash refund, wallet untouched.
+      refundType = "cash";
+    }
     refundFils = price;
-    refundType = "wallet";
-  } else if (order.charged && price > 0) {
-    // Paid in cash at the counter (walk-in) → cash refund, wallet untouched.
-    refundFils = price;
-    refundType = "cash";
+    newCharged = false; // refunded → drop from revenue
   }
+  // If refund === false: keep the payment (charged stays true → still counts as
+  // revenue), and refund nothing.
 
   const { error } = await admin
     .from("orders")
     .update({
       status: "cancelled",
-      charged: false, // exclude from revenue
-      cancel_reason: reason?.trim() || null,
+      charged: newCharged,
+      cancel_reason: cleanReason,
       refund_fils: refundFils || null,
     })
     .eq("id", orderId);

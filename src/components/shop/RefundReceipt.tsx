@@ -43,7 +43,7 @@ export function RefundReceipt({
         <div className="mb-4 flex flex-col items-center border-b border-dashed border-gray-300 pb-4 text-center">
           <Image src="/blue-point-logo.png" alt={t.brandFull} width={64} height={64} className="h-16 w-16 object-contain" />
           <p className="mt-2 text-lg font-extrabold text-brand">{t.brand}</p>
-          <p className="mt-1 text-sm font-bold">{t.receipt.refundTitle}</p>
+          <p className="mt-1 text-sm font-bold">{refund > 0 ? t.receipt.refundTitle : t.receipt.cancelTitle}</p>
         </div>
 
         <div className="space-y-1.5 text-sm">
@@ -65,7 +65,7 @@ export function RefundReceipt({
         )}
 
         <div className="mt-4 space-y-1.5 border-t border-dashed border-gray-300 pt-3 text-sm">
-          <Row label={t.receipt.method} value={method === "wallet" ? t.receipt.wallet : method === "cash" ? t.receipt.cash : "—"} />
+          <Row label={t.receipt.method} value={method === "wallet" ? t.receipt.wallet : method === "cash" ? t.receipt.cash : t.receipt.noRefund} />
           {order.cancel_reason && <Row label={t.receipt.reason} value={order.cancel_reason} />}
         </div>
 
