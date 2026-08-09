@@ -1,19 +1,10 @@
 import "server-only";
 
-// Seeded demo/staff accounts. These keep the old "show the code on screen" flow
-// so the app is testable without a live WhatsApp channel. Everyone else gets a
-// real OTP sent to their phone. Extend via the TEST_PHONES env var (comma-separated
-// E.164 numbers) without touching code.
-const DEFAULT_TEST_PHONES = [
-  "+96551234567",
-  "+96596596604",
-  "+96596604502",
-  "+96560000000", // admin
-  "+96560000001", // shop
-  "+96551111111", // driver 1
-  "+96552222222", // driver 2
-  "+96553333333", // driver 3
-];
+// Numbers that get the OTP shown ON SCREEN instead of over WhatsApp (for offline
+// testing). Empty by default now, so EVERY number receives a real WhatsApp OTP.
+// Add specific numbers via the TEST_PHONES env var (comma-separated E.164) if you
+// ever need on-screen codes again.
+const DEFAULT_TEST_PHONES: string[] = [];
 
 export function isTestPhone(phone: string | null | undefined): boolean {
   if (!phone) return false;
