@@ -10,7 +10,7 @@ import { formatMoney } from "@/lib/money";
 import { signOut } from "@/app/actions/auth";
 import type { ReactNode } from "react";
 
-type IconName = "home" | "orders" | "addresses" | "credit" | "prices" | "locations" | "profile";
+type IconName = "home" | "orders" | "addresses" | "credit" | "prices" | "locations" | "profile" | "preferences" | "offers";
 
 function NavIcon({ name }: { name: IconName }) {
   const c = "h-6 w-6";
@@ -29,6 +29,10 @@ function NavIcon({ name }: { name: IconName }) {
       return <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11Z" /><circle cx="12" cy="10" r="2.5" /></svg>;
     case "profile":
       return <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>;
+    case "preferences":
+      return <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.8 6.5a9 9 0 0 0-2.6-2.6L16 5a7 7 0 0 0-1.4-.6L14 2h-4l-.6 2.4A7 7 0 0 0 8 5l-2.2-1.1A9 9 0 0 0 3.2 6.5L5 8a7 7 0 0 0 0 8l-1.8 1.5a9 9 0 0 0 2.6 2.6L8 19a7 7 0 0 0 1.4.6L10 22h4l.6-2.4A7 7 0 0 0 16 19l2.2 1.1a9 9 0 0 0 2.6-2.6L19 16a7 7 0 0 0 0-8Z" /><circle cx="12" cy="12" r="2.5" /></svg>;
+    case "offers":
+      return <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.6 13.4 13 21a2 2 0 0 1-2.8 0l-7-7A2 2 0 0 1 2.6 12L3 4l8-.4L20.6 11a2 2 0 0 1 0 2.4Z" /><circle cx="7.5" cy="7.5" r="1" fill="currentColor" /></svg>;
   }
 }
 
@@ -67,6 +71,8 @@ export function CustomerShell({
   ];
   const moreNav = [
     { href: "/prices", label: t.nav.prices, icon: "prices" as const },
+    { href: "/preferences", label: t.nav.preferences, icon: "preferences" as const },
+    { href: "/offers", label: t.nav.offers, icon: "offers" as const },
     { href: "/locations", label: t.nav.locations, icon: "locations" as const },
     { href: "/profile", label: t.nav.profile, icon: "profile" as const },
   ];

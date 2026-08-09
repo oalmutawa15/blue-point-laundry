@@ -287,6 +287,7 @@ export type Database = {
           id: string
           is_active: boolean
           phone: string
+          preferences: Json
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
         }
@@ -297,6 +298,7 @@ export type Database = {
           id: string
           is_active?: boolean
           phone: string
+          preferences?: Json
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }
@@ -307,6 +309,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           phone?: string
+          preferences?: Json
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }

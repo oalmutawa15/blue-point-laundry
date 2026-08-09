@@ -68,6 +68,7 @@ export function ProfileView({ name, phone }: { name: string | null; phone: strin
 
       <Section title={t.profile.account}>
         <Row icon={ic('<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11Z"/><circle cx="12" cy="10" r="2.5"/>')} label={t.profile.addressesLink} href="/addresses" />
+        <Row icon={ic('<path d="M20.8 6.5a9 9 0 0 0-2.6-2.6L16 5a7 7 0 0 0-1.4-.6L14 2h-4l-.6 2.4A7 7 0 0 0 8 5l-2.2-1.1A9 9 0 0 0 3.2 6.5L5 8a7 7 0 0 0 0 8l-1.8 1.5a9 9 0 0 0 2.6 2.6L8 19a7 7 0 0 0 1.4.6L10 22h4l.6-2.4A7 7 0 0 0 16 19l2.2 1.1a9 9 0 0 0 2.6-2.6L19 16a7 7 0 0 0 0-8Z"/><circle cx="12" cy="12" r="2.5"/>')} label={t.preferences.title} href="/preferences" />
         <Row icon={ic('<path d="M9 3H5a2 2 0 0 0-2 2v4l11 11a2 2 0 0 0 3 0l4-4a2 2 0 0 0 0-3L10 2Z"/>')} label={t.prices.title} href="/prices" />
         <Row icon={ic('<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/>')} label={t.nav.credit} href="/credit" />
         <Row icon={ic('<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11Z"/><circle cx="12" cy="10" r="2.5"/>')} label={t.locations.title} href="/locations" />
