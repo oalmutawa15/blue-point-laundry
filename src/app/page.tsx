@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { useLang } from "@/lib/i18n/LanguageProvider";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { isValidPhone, normalizePhone } from "@/lib/phone";
-import { COUNTRIES, DEFAULT_DIAL } from "@/lib/countries";
+import { DEFAULT_DIAL } from "@/lib/countries";
+import { CountryCodeSelect } from "@/components/CountryCodeSelect";
 import { signInWithPhone, phoneNeedsPassword } from "@/app/actions/auth";
 
 export default function LoginPage() {
@@ -102,32 +103,19 @@ export default function LoginPage() {
               {t.login.phoneLabel}
             </label>
             <div
-              className="flex items-stretch overflow-hidden rounded-xl border border-border bg-white focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20"
+              className="flex items-stretch rounded-xl border border-border bg-white focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20"
               dir="ltr"
             >
-              <label className="relative flex items-center bg-muted text-sm font-semibold text-muted-foreground">
-                <span className="pointer-events-none flex items-center gap-1 pl-3 pr-2">
-                  {COUNTRIES.find((c) => c.dial === dial)?.flag ?? "🏳️"} +{dial}
-                  <span aria-hidden className="text-xs opacity-60">▾</span>
-                </span>
-                <select
-                  aria-label={t.login.phoneLabel}
-                  value={dial}
-                  onChange={(e) => {
-                    setDial(e.target.value);
-                    setPhone("");
-                    setNeedsPassword(false);
-                    setPassword("");
-                  }}
-                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                >
-                  {COUNTRIES.map((c) => (
-                    <option key={c.code} value={c.dial}>
-                      {c.flag} {(lang === "ar" ? c.nameAr : c.name)} +{c.dial}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <CountryCodeSelect
+                dial={dial}
+                lang={lang}
+                onChange={(d) => {
+                  setDial(d);
+                  setPhone("");
+                  setNeedsPassword(false);
+                  setPassword("");
+                }}
+              />
               <input
                 id="phone"
                 type="tel"
@@ -139,7 +127,7 @@ export default function LoginPage() {
                   setPhone(e.target.value.replace(/\D/g, "").slice(0, maxLen))
                 }
                 onBlur={() => setTouched(true)}
-                className="w-full bg-transparent px-3 py-3 text-base tabular-nums outline-none"
+                className="w-full rounded-r-xl bg-transparent px-3 py-3 text-base tabular-nums outline-none"
                 style={{ textAlign: dir === "rtl" ? "right" : "left" }}
               />
             </div>
