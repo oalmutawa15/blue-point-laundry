@@ -1,8 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
+import { getSessionProfile } from "@/lib/auth";
 import { HomeView } from "@/components/customer/HomeView";
 
 export default async function HomePage() {
   const supabase = await createClient();
+  const profile = await getSessionProfile();
 
   const [addressesRes, activeRes] = await Promise.all([
     supabase
@@ -22,6 +24,7 @@ export default async function HomePage() {
     <HomeView
       addresses={addressesRes.data ?? []}
       activeOrder={activeRes.data?.[0] ?? null}
+      creditFils={profile?.credit_fils ?? 0}
     />
   );
 }

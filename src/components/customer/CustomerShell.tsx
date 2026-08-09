@@ -10,7 +10,7 @@ import { formatMoney } from "@/lib/money";
 import { signOut } from "@/app/actions/auth";
 import type { ReactNode } from "react";
 
-type IconName = "home" | "orders" | "addresses" | "credit" | "prices" | "locations";
+type IconName = "home" | "orders" | "addresses" | "credit" | "prices" | "locations" | "profile";
 
 function NavIcon({ name }: { name: IconName }) {
   const c = "h-6 w-6";
@@ -27,6 +27,8 @@ function NavIcon({ name }: { name: IconName }) {
       return <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4l11 11a2 2 0 0 0 3 0l4-4a2 2 0 0 0 0-3L10 2Z" /><circle cx="7.5" cy="7.5" r="1" fill="currentColor" /></svg>;
     case "locations":
       return <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11Z" /><circle cx="12" cy="10" r="2.5" /></svg>;
+    case "profile":
+      return <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>;
   }
 }
 
@@ -56,6 +58,7 @@ export function CustomerShell({
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // Full nav (desktop sidebar + mobile drawer).
   const nav = [
     { href: "/home", label: t.nav.home, icon: "home" as const },
     { href: "/orders", label: t.nav.orders, icon: "orders" as const },
@@ -65,6 +68,13 @@ export function CustomerShell({
   const moreNav = [
     { href: "/prices", label: t.nav.prices, icon: "prices" as const },
     { href: "/locations", label: t.nav.locations, icon: "locations" as const },
+    { href: "/profile", label: t.nav.profile, icon: "profile" as const },
+  ];
+  // Mobile bottom bar: Orders / Home / Profile (Home centered & elevated).
+  const bottomNav = [
+    { href: "/orders", label: t.nav.orders, icon: "orders" as const },
+    { href: "/home", label: t.nav.home, icon: "home" as const },
+    { href: "/profile", label: t.nav.profile, icon: "profile" as const },
   ];
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
 
@@ -191,21 +201,39 @@ export function CustomerShell({
         </div>
       </div>
 
-      {/* Mobile bottom navigation */}
+      {/* Mobile bottom navigation: Orders / Home / Profile */}
       <nav className="fixed bottom-0 left-0 z-20 w-full border-t border-border bg-card lg:hidden">
-        <div className="mx-auto grid max-w-md grid-cols-4">
-          {nav.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex flex-col items-center gap-1 py-2.5 text-xs font-medium transition-colors ${
-                isActive(item.href) ? "text-brand" : "text-muted-foreground"
-              }`}
-            >
-              <NavIcon name={item.icon} />
-              {item.label}
-            </Link>
-          ))}
+        <div className="mx-auto grid max-w-md grid-cols-3 items-end">
+          {bottomNav.map((item) => {
+            const active = isActive(item.href);
+            if (item.icon === "home") {
+              return (
+                <div key={item.href} className="flex justify-center">
+                  <Link
+                    href={item.href}
+                    aria-label={item.label}
+                    className={`-mt-6 flex h-14 w-14 items-center justify-center rounded-full shadow-lg ring-4 ring-card ${
+                      active ? "bg-brand text-brand-foreground" : "bg-brand text-brand-foreground"
+                    }`}
+                  >
+                    <NavIcon name="home" />
+                  </Link>
+                </div>
+              );
+            }
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex flex-col items-center gap-1 py-2.5 text-xs font-medium transition-colors ${
+                  active ? "text-brand" : "text-muted-foreground"
+                }`}
+              >
+                <NavIcon name={item.icon} />
+                {item.label}
+              </Link>
+            );
+          })}
         </div>
       </nav>
     </div>
