@@ -10,11 +10,15 @@ type ApiStatus = "pending" | "paid" | "failed";
 // "confirming" = still polling; "timeout" = we stopped polling without a final answer.
 type Status = "confirming" | "paid" | "failed" | "timeout";
 
-// Capture routinely lags the browser redirect by 30–60s in this gateway, so we
-// poll for up to ~2 minutes before giving up. Each poll re-verifies with
-// UPayments, so a late capture still flips us to "approved" the moment it lands.
-const MAX_TRIES = 45;
-const INTERVAL_MS = 2500;
+// Poll fast so we flip to "approved" the instant the capture lands — checking
+// every ~800ms for the first ~30s (when the vast majority of captures settle),
+// then easing off to ~2s so we still cover a slow capture for up to ~2 minutes
+// total without hammering the endpoint. Each poll re-verifies with UPayments.
+const FAST_MS = 800;
+const FAST_TRIES = 40; // ~32s of rapid polling
+const SLOW_MS = 2000;
+const MAX_TRIES = 85; // ~32s fast + ~110s slow ≈ 2 min total window
+const nextDelay = (tries: number) => (tries < FAST_TRIES ? FAST_MS : SLOW_MS);
 
 export function PaymentResult({ paymentId }: { paymentId: string }) {
   const { t, lang } = useLang();
@@ -47,7 +51,7 @@ export function PaymentResult({ paymentId }: { paymentId: string }) {
         // network hiccup — keep trying
       }
       if (tries < MAX_TRIES) {
-        setTimeout(poll, INTERVAL_MS);
+        setTimeout(poll, nextDelay(tries));
       } else if (active) {
         // Stopped without a definite answer — show a clear "still processing"
         // screen instead of an eternal spinner.
