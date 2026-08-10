@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStaffProfile } from "@/lib/auth";
 import { notifyPickupAssigned, notifyReadyForDelivery } from "@/lib/notify";
+import { sendReceiptFor } from "@/lib/receipt";
 import type { Database } from "@/types/database";
 
 export type RefundType = "wallet" | "cash" | "none";
@@ -72,6 +73,7 @@ export async function saveIntake(
   deliveryDate: string | null,
 ): Promise<Ok> {
   if (!(await getStaffProfile())) return { ok: false, error: "forbidden" };
+  if (!deliveryDate) return { ok: false, error: "date_required" };
   const supabase = await createClient();
 
   await supabase.from("order_items").delete().eq("order_id", orderId);
@@ -106,9 +108,19 @@ export async function saveIntake(
   return { ok: true };
 }
 
-// awaiting_payment -> washing: confirm payment (charges the wallet) and start washing.
+// awaiting_payment -> washing: confirm payment (charges the wallet), start
+// washing, and automatically send the customer their receipt link over WhatsApp.
 export async function confirmPayment(orderId: string): Promise<Ok> {
-  return setStatus(orderId, "washing");
+  const res = await setStatus(orderId, "washing");
+  if (!res.ok) return res;
+  // Auto-publish the receipt. Don't fail the payment if the send hiccups.
+  try {
+    await sendReceiptFor(orderId);
+  } catch {
+    // receipt can be re-sent manually from the order screen
+  }
+  revalidate(orderId);
+  return res;
 }
 
 // washing -> ready: clothes are clean and ready for delivery.

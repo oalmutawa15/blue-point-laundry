@@ -117,7 +117,7 @@ export function ShopOrderDetail({
 
       {/* Action panel */}
       <div className="rounded-2xl bg-card p-4 shadow-sm">
-        <ShopOrderActions order={order} drivers={drivers} />
+        <ShopOrderActions order={order} items={items} drivers={drivers} />
       </div>
 
       {/* Timeline */}

@@ -147,13 +147,34 @@ function DriverPicker({
   );
 }
 
-function IntakeForm({ orderId }: { orderId: string }) {
+function IntakeForm({
+  orderId,
+  initialItems,
+  initialDeliveryDate,
+  onDone,
+}: {
+  orderId: string;
+  initialItems?: Tables<"order_items">[];
+  initialDeliveryDate?: string | null;
+  onDone?: () => void;
+}) {
   const { t, lang } = useLang();
   const router = useRouter();
   const emptyRow: ItemRow = { garment: "", item: null, service: "wash", qty: 1, priceKwd: "" };
-  const [rows, setRows] = useState<ItemRow[]>([{ ...emptyRow }]);
-  const [deliveryDate, setDeliveryDate] = useState("");
+  const [rows, setRows] = useState<ItemRow[]>(() =>
+    initialItems && initialItems.length
+      ? initialItems.map((it) => ({
+          garment: it.garment ?? "",
+          item: null,
+          service: (it.service as PriceService) ?? "wash",
+          qty: it.qty,
+          priceKwd: filsToKwd(it.unit_price_fils),
+        }))
+      : [{ ...emptyRow }],
+  );
+  const [deliveryDate, setDeliveryDate] = useState(initialDeliveryDate ?? "");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const total = rows.reduce(
     (s, r) => s + (r.qty || 0) * kwdToFils(r.priceKwd || "0"),
@@ -183,6 +204,11 @@ function IntakeForm({ orderId }: { orderId: string }) {
   }
 
   async function submit() {
+    setError(null);
+    if (!deliveryDate) {
+      setError(t.shop.dateRequired);
+      return;
+    }
     const items: ItemInput[] = rows
       .filter((r) => r.qty > 0)
       .map((r) => ({
@@ -192,8 +218,14 @@ function IntakeForm({ orderId }: { orderId: string }) {
         unit_price_fils: kwdToFils(r.priceKwd || "0"),
       }));
     setBusy(true);
-    await saveIntake(orderId, items, deliveryDate || null);
-    router.refresh();
+    const res = await saveIntake(orderId, items, deliveryDate);
+    setBusy(false);
+    if (!res.ok) {
+      setError(res.error === "date_required" ? t.shop.dateRequired : res.error);
+      return;
+    }
+    if (onDone) onDone();
+    else router.refresh();
   }
 
   return (
@@ -268,13 +300,16 @@ function IntakeForm({ orderId }: { orderId: string }) {
 
       <div>
         <label className="mb-1 block text-xs font-semibold text-muted-foreground">
-          {t.shop.deliveryDate}
+          {t.shop.deliveryDate} <span className="text-danger">*</span>
         </label>
         <input
           type="date"
+          required
           value={deliveryDate}
           onChange={(e) => setDeliveryDate(e.target.value)}
-          className="w-full rounded-xl border border-border bg-white px-3 py-2.5 text-sm outline-none focus:border-brand"
+          className={`w-full rounded-xl border bg-white px-3 py-2.5 text-sm outline-none focus:border-brand ${
+            error && !deliveryDate ? "border-danger" : "border-border"
+          }`}
         />
       </div>
 
@@ -282,6 +317,8 @@ function IntakeForm({ orderId }: { orderId: string }) {
         <span className="font-bold">{t.shop.total}</span>
         <span className="font-extrabold tabular-nums">{formatMoney(total, lang)}</span>
       </div>
+
+      {error && <p className="text-sm font-semibold text-danger">{error}</p>}
 
       <button
         onClick={submit}
@@ -296,15 +333,18 @@ function IntakeForm({ orderId }: { orderId: string }) {
 
 export function ShopOrderActions({
   order,
+  items,
   drivers,
 }: {
   order: Tables<"orders">;
+  items: Tables<"order_items">[];
   drivers: DriverLite[];
 }) {
   const { t } = useLang();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
 
   async function run(fn: () => Promise<{ ok: boolean; error?: string }>) {
     setBusy(true);
@@ -355,7 +395,37 @@ export function ShopOrderActions({
       case "counting":
         return <IntakeForm orderId={order.id} />;
       case "awaiting_payment":
-        return primaryBtn(t.shop.confirmPayment, () => confirmPayment(order.id));
+        return editing ? (
+          <div className="space-y-2">
+            <IntakeForm
+              orderId={order.id}
+              initialItems={items}
+              initialDeliveryDate={order.delivery_date}
+              onDone={() => {
+                setEditing(false);
+                router.refresh();
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => setEditing(false)}
+              className="w-full rounded-xl border border-border px-4 py-3 text-sm font-bold"
+            >
+              {t.customers.cancel}
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {primaryBtn(t.shop.confirmPayment, () => confirmPayment(order.id))}
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="w-full rounded-xl border border-border px-4 py-3 text-sm font-bold text-brand"
+            >
+              {t.shop.editOrder}
+            </button>
+          </div>
+        );
       case "washing":
         return primaryBtn(t.shop.markReadyBtn, () => markReady(order.id));
       case "ready":
