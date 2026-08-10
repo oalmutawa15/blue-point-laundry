@@ -54,9 +54,10 @@ export function ShopCustomers({ customers }: { customers: ShopCustomer[] }) {
           <p className="p-6 text-center text-sm text-muted-foreground">{t.customers.noCustomers}</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-sm">
+            <table className="w-full min-w-[720px] text-sm">
               <thead>
                 <tr className="text-start text-xs font-semibold text-muted-foreground">
+                  <th className="px-4 py-3 text-start">{t.customers.id}</th>
                   <th className="px-4 py-3 text-start">{t.customers.name}</th>
                   <th className="px-4 py-3 text-start">{t.customers.phone}</th>
                   <th className="px-4 py-3 text-center">{t.customers.ordersCount}</th>
@@ -71,6 +72,7 @@ export function ShopCustomers({ customers }: { customers: ShopCustomer[] }) {
                     onClick={() => router.push(`/shop/customers/${c.id}`)}
                     className="cursor-pointer border-t border-border transition-colors hover:bg-muted/50"
                   >
+                    <td className="px-4 py-3 tabular-nums text-muted-foreground">{c.customer_no ?? "—"}</td>
                     <td className="px-4 py-3 font-semibold">{c.full_name || "—"}</td>
                     <td className="px-4 py-3 tabular-nums">{c.phone.replace("+965", "")}</td>
                     <td className="px-4 py-3 text-center tabular-nums">{c.orders_count}</td>

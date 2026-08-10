@@ -8,6 +8,7 @@ import { normalizeKwPhone } from "@/lib/phone";
 
 export type ShopCustomer = {
   id: string;
+  customer_no: number | null;
   full_name: string | null;
   phone: string;
   credit_fils: number;
