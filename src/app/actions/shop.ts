@@ -37,6 +37,7 @@ async function setStatus(orderId: string, status: OrderStatus): Promise<Ok> {
     .update({ status })
     .eq("id", orderId);
   if (error) {
+    if (/CUSTOMER_IN_DEBT/.test(error.message)) return { ok: false, error: "customer_in_debt" };
     if (/INSUFFICIENT_CREDIT/.test(error.message)) return { ok: false, error: "insufficient_credit" };
     return { ok: false, error: error.message };
   }
@@ -143,7 +144,10 @@ export async function assignDeliveryDriver(orderId: string, driverId: string): P
     .eq("id", orderId)
     .select("order_no")
     .single();
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    if (/CUSTOMER_IN_DEBT/.test(error.message)) return { ok: false, error: "customer_in_debt" };
+    return { ok: false, error: error.message };
+  }
   await notifyReadyForDelivery(orderId, data.order_no, driverId);
   revalidate(orderId);
   return { ok: true };

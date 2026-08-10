@@ -351,7 +351,13 @@ export function ShopOrderActions({
     const res = await fn();
     if (!res.ok) {
       setBusy(false);
-      setError(res.error === "insufficient_credit" ? t.shop.customerNoCredit : (res.error ?? "error"));
+      setError(
+        res.error === "customer_in_debt"
+          ? t.shop.customerInDebt
+          : res.error === "insufficient_credit"
+            ? t.shop.customerNoCredit
+            : (res.error ?? "error"),
+      );
       return;
     }
     router.refresh();
@@ -429,14 +435,14 @@ export function ShopOrderActions({
         return primaryBtn(t.shop.markReadyBtn, () => markReady(order.id));
       case "ready":
         return (
-          <DriverPicker
-            drivers={drivers}
-            label={t.shop.assignDelivery}
-            onAssign={async (id) => {
-              await assignDeliveryDriver(order.id, id);
-              router.refresh();
-            }}
-          />
+          <div className="space-y-2">
+            <DriverPicker
+              drivers={drivers}
+              label={t.shop.assignDelivery}
+              onAssign={(id) => run(() => assignDeliveryDriver(order.id, id))}
+            />
+            {error && <p className="text-sm font-semibold text-danger">{error}</p>}
+          </div>
         );
       case "delivering":
         return info(t.status.delivering);
