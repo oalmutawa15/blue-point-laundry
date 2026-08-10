@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useLang } from "@/lib/i18n/LanguageProvider";
 import { OrderStatusBadge } from "./OrderStatusBadge";
+import { OrderProgress } from "./OrderProgress";
+import { useRealtimeOrders } from "@/lib/useRealtimeOrders";
 import { formatMoney } from "@/lib/money";
 import { formatAddress } from "@/lib/address";
 import type { Tables } from "@/types/database";
@@ -19,15 +21,10 @@ export function OrderDetail({
   events: Tables<"order_events">[];
 }) {
   const { t, lang } = useLang();
+  useRealtimeOrders("order-detail");
   const locale = lang === "ar" ? "ar-KW" : "en-GB";
   const fmtDate = (s: string) =>
     new Date(s).toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" });
-  const fmtTime = (s: string) =>
-    new Date(s).toLocaleString(locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-
-  const sortedEvents = [...events].sort(
-    (a, b) => +new Date(a.created_at) - +new Date(b.created_at),
-  );
 
   const Row = ({ label, value }: { label: string; value: React.ReactNode }) => (
     <div className="flex items-center justify-between py-2 text-sm">
@@ -89,28 +86,8 @@ export function OrderDetail({
         </div>
       )}
 
-      {/* Timeline */}
-      <div className="rounded-2xl bg-card p-4 shadow-sm">
-        <h2 className="mb-3 font-bold">{t.orders.timeline}</h2>
-        <ol className="relative space-y-4 ps-5">
-          {sortedEvents.map((e, i) => (
-            <li key={e.id} className="relative">
-              <span
-                className={`absolute -start-5 top-1 h-3 w-3 rounded-full ${
-                  i === sortedEvents.length - 1 ? "bg-brand" : "bg-border"
-                }`}
-              />
-              {i < sortedEvents.length - 1 && (
-                <span className="absolute -start-[15px] top-3 h-full w-px bg-border" />
-              )}
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold">{t.status[e.status]}</span>
-                <span className="text-xs text-muted-foreground">{fmtTime(e.created_at)}</span>
-              </div>
-            </li>
-          ))}
-        </ol>
-      </div>
+      {/* Full stage-by-stage progress — same stages the shop works through */}
+      <OrderProgress status={order.status} events={events} />
     </div>
   );
 }
