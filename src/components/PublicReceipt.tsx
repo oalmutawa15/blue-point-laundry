@@ -1,0 +1,107 @@
+"use client";
+
+import Image from "next/image";
+import { useLang } from "@/lib/i18n/LanguageProvider";
+import { formatMoney } from "@/lib/money";
+import { OrderStatusBadge } from "@/components/customer/OrderStatusBadge";
+import type { OrderStatus } from "@/types/database";
+
+export type ReceiptItem = {
+  service: string;
+  garment: string | null;
+  qty: number;
+  unit_price_fils: number;
+};
+
+export type ReceiptData = {
+  orderNo: string;
+  status: OrderStatus;
+  createdAt: string;
+  customerName: string;
+  pieceCount: number | null;
+  priceFils: number | null;
+  items: ReceiptItem[];
+};
+
+export function PublicReceipt({ data }: { data: ReceiptData }) {
+  const { t, lang } = useLang();
+  const date = new Date(data.createdAt).toLocaleDateString(lang === "ar" ? "ar-KW" : "en-GB");
+  const total = data.priceFils ?? data.items.reduce((s, i) => s + i.qty * i.unit_price_fils, 0);
+
+  return (
+    <main className="min-h-screen bg-background px-4 py-8 print:bg-white">
+      <div className="mx-auto w-full max-w-md rounded-3xl bg-card p-6 shadow-lg print:shadow-none">
+        <div className="flex flex-col items-center text-center">
+          <Image
+            src="/blue-point-logo.png"
+            alt={t.brandFull}
+            width={56}
+            height={56}
+            className="h-14 w-14 object-contain"
+          />
+          <h1 className="mt-3 text-xl font-extrabold">{t.brand}</h1>
+          <p className="text-sm text-muted-foreground">{t.publicReceipt.title}</p>
+        </div>
+
+        <div className="mt-5 space-y-2 border-t border-border pt-4 text-sm">
+          <Row label={t.publicReceipt.order} value={<span className="font-extrabold tabular-nums">{data.orderNo}</span>} />
+          <Row label={t.publicReceipt.date} value={date} />
+          <Row label={t.publicReceipt.customer} value={data.customerName || "—"} />
+          <Row label={t.publicReceipt.status} value={<OrderStatusBadge status={data.status} />} />
+        </div>
+
+        {data.items.length > 0 && (
+          <div className="mt-4 border-t border-border pt-4">
+            <div className="mb-2 grid grid-cols-[1fr_auto_auto] gap-3 text-xs font-bold text-muted-foreground">
+              <span>{t.publicReceipt.item}</span>
+              <span className="text-center">{t.publicReceipt.qty}</span>
+              <span className="text-end">{t.publicReceipt.price}</span>
+            </div>
+            <div className="space-y-1.5 text-sm">
+              {data.items.map((i, idx) => (
+                <div key={idx} className="grid grid-cols-[1fr_auto_auto] items-center gap-3">
+                  <span className="font-semibold">
+                    {i.garment ? `${i.garment} — ${i.service}` : i.service}
+                  </span>
+                  <span className="text-center tabular-nums">{i.qty}</span>
+                  <span className="text-end tabular-nums">
+                    {formatMoney(i.qty * i.unit_price_fils, lang)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="mt-4 space-y-2 border-t border-border pt-4 text-sm">
+          {data.pieceCount != null && (
+            <Row label={t.publicReceipt.pieces} value={<span className="tabular-nums">{data.pieceCount}</span>} />
+          )}
+          <div className="flex items-center justify-between text-lg font-extrabold">
+            <span>{t.publicReceipt.total}</span>
+            <span className="tabular-nums">{formatMoney(total, lang)}</span>
+          </div>
+        </div>
+
+        <p className="mt-5 text-center text-xs text-muted-foreground">{t.publicReceipt.thanks}</p>
+
+        <button
+          type="button"
+          onClick={() => window.print()}
+          className="mt-4 w-full rounded-xl bg-brand px-4 py-3 text-base font-bold text-brand-foreground print:hidden"
+        >
+          {t.publicReceipt.print}
+        </button>
+      </div>
+    </main>
+  );
+}
+
+function Row({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-semibold">{value}</span>
+    </div>
+  );
+}

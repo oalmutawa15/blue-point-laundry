@@ -173,6 +173,8 @@ export type Database = {
           pickup_driver_id: string | null
           piece_count: number | null
           price_fils: number | null
+          receipt_token: string
+          receipt_sent_at: string | null
           staff_note: string | null
           status: Database["public"]["Enums"]["order_status"]
           updated_at: string
@@ -193,6 +195,8 @@ export type Database = {
           pickup_driver_id?: string | null
           piece_count?: number | null
           price_fils?: number | null
+          receipt_token?: string
+          receipt_sent_at?: string | null
           staff_note?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           updated_at?: string
@@ -213,6 +217,8 @@ export type Database = {
           pickup_driver_id?: string | null
           piece_count?: number | null
           price_fils?: number | null
+          receipt_token?: string
+          receipt_sent_at?: string | null
           staff_note?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           updated_at?: string

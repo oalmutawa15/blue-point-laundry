@@ -105,6 +105,31 @@ export async function notifyCustomerCancelled(
   });
 }
 
+// Receipt published → send the customer a WhatsApp with the receipt link.
+export async function notifyReceipt(
+  orderId: string,
+  orderNo: string,
+  customerId: string | null,
+  url: string,
+) {
+  if (!customerId) return { ok: false as const, error: "no_customer" };
+  const admin = createAdminClient();
+  const { data: c } = await admin
+    .from("profiles")
+    .select("phone")
+    .eq("id", customerId)
+    .single();
+  const message = `🧾 تم إصدار إيصال طلبك ${orderNo} من بلو بوينت.\nيمكنك عرض الإيصال وتحميله من هنا:\n${url}`;
+  await record(admin, {
+    orderId,
+    recipientId: customerId,
+    recipientPhone: c?.phone ?? null,
+    template: "receipt",
+    message,
+  });
+  return { ok: true as const, phone: c?.phone ?? null };
+}
+
 // New order placed → alert all shop staff.
 export async function notifyNewOrder(orderId: string, orderNo: string) {
   const admin = createAdminClient();

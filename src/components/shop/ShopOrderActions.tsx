@@ -21,6 +21,7 @@ import {
   cancelOrder,
   type ItemInput,
 } from "@/app/actions/shop";
+import { publishReceipt } from "@/app/actions/receipts";
 import type { Tables } from "@/types/database";
 import type { DriverLite } from "@/lib/orderTypes";
 
@@ -383,6 +384,45 @@ export function ShopOrderActions({
       ) : (
         <CancelBox order={order} />
       )}
+
+      {order.status !== "cancelled" && order.price_fils != null && (
+        <ReceiptSender order={order} />
+      )}
+    </div>
+  );
+}
+
+// "Send receipt to customer" — publishes the receipt link over WhatsApp.
+function ReceiptSender({ order }: { order: Tables<"orders"> }) {
+  const { t } = useLang();
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState<boolean>(!!order.receipt_sent_at);
+  const [error, setError] = useState<string | null>(null);
+
+  async function send() {
+    setBusy(true);
+    setError(null);
+    const res = await publishReceipt(order.id);
+    setBusy(false);
+    if (!res.ok) {
+      setError(res.error);
+      return;
+    }
+    setSent(true);
+  }
+
+  return (
+    <div className="space-y-2">
+      <button
+        type="button"
+        onClick={send}
+        disabled={busy}
+        className="flex w-full items-center justify-center gap-2 rounded-xl border border-brand bg-brand-soft px-4 py-3 text-sm font-bold text-brand disabled:opacity-50"
+      >
+        <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16v12H5.2L4 17.2z" /><path d="M8 9h8M8 13h5" /></svg>
+        {busy ? t.publicReceipt.sending : sent ? t.publicReceipt.sent : t.publicReceipt.sendReceipt}
+      </button>
+      {error && <p className="text-sm font-semibold text-danger">{error}</p>}
     </div>
   );
 }
