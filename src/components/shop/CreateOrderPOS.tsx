@@ -151,7 +151,10 @@ export function CreateOrderPOS() {
     );
   }
 
-  const total = cart.reduce((s, l) => s + l.qty * l.priceFils, 0);
+  // Fast (express) service doubles every price.
+  const fastMult = fast ? 2 : 1;
+  const lineFils = (l: CartLine) => l.qty * l.priceFils * fastMult;
+  const total = cart.reduce((s, l) => s + lineFils(l), 0);
 
   async function onCustSearch(v: string) {
     setCustQuery(v);
@@ -173,7 +176,7 @@ export function CreateOrderPOS() {
       garment: l.name,
       service: l.service,
       qty: l.qty,
-      unit_price_fils: l.priceFils,
+      unit_price_fils: l.priceFils * fastMult,
     }));
 
     const noteParts: string[] = [];
@@ -374,6 +377,7 @@ export function CreateOrderPOS() {
               <span className="flex items-center gap-2 text-sm font-semibold">
                 <svg className="h-4 w-4 text-amber-500" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z" /></svg>
                 {t.pos.fast}
+                <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-xs font-extrabold text-amber-700">×2</span>
               </span>
               <Toggle on={fast} onChange={setFast} />
             </label>
@@ -443,7 +447,7 @@ export function CreateOrderPOS() {
                       <button onClick={() => updateLine(l.uid, { qty: l.qty + 1 })} className="h-7 w-7 rounded-lg bg-muted text-sm font-bold">+</button>
                     </div>
                     <span className="min-w-14 text-end text-sm font-bold tabular-nums">
-                      {filsToKwd(l.qty * l.priceFils)}
+                      {filsToKwd(lineFils(l))}
                     </span>
                   </div>
                 </div>
@@ -466,7 +470,7 @@ export function CreateOrderPOS() {
                   <span className="truncate text-muted-foreground">
                     {l.name} · {t.shop.services[l.service]} ×{l.qty}
                   </span>
-                  <span className="shrink-0 tabular-nums">{filsToKwd(l.qty * l.priceFils)}</span>
+                  <span className="shrink-0 tabular-nums">{filsToKwd(lineFils(l))}</span>
                 </div>
               ))}
               <div className="mt-2 flex items-center justify-between border-t border-border pt-2 font-bold text-muted-foreground">
