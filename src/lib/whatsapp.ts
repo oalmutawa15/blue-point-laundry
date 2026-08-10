@@ -31,6 +31,7 @@ export async function sendWhatsApp(to: string, body: string): Promise<WaResult> 
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({ token, to, body }).toString(),
+        signal: AbortSignal.timeout(8000),
       });
       const json = (await res.json().catch(() => ({}))) as {
         sent?: string | boolean;
@@ -62,6 +63,7 @@ export async function sendWhatsAppImage(
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({ token, to, image: imageUrl, caption }).toString(),
+        signal: AbortSignal.timeout(8000),
       });
       const json = (await res.json().catch(() => ({}))) as {
         sent?: string | boolean;

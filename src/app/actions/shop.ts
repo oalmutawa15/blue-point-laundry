@@ -1,5 +1,6 @@
 "use server";
 
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -108,17 +109,21 @@ export async function saveIntake(
   return { ok: true };
 }
 
-// awaiting_payment -> washing: confirm payment (charges the wallet), start
-// washing, and automatically send the customer their receipt link over WhatsApp.
+// awaiting_payment -> washing: charge the wallet and start washing immediately,
+// then send the customer their receipt in the BACKGROUND (via after()) so the
+// WhatsApp send never blocks/hangs the confirm button.
 export async function confirmPayment(orderId: string): Promise<Ok> {
   const res = await setStatus(orderId, "washing");
   if (!res.ok) return res;
-  // Auto-publish the receipt. Don't fail the payment if the send hiccups.
-  try {
-    await sendReceiptFor(orderId);
-  } catch {
-    // receipt can be re-sent manually from the order screen
-  }
+  // Fire the receipt send after the response is returned — the wallet charge and
+  // status change are already committed by setStatus above.
+  after(async () => {
+    try {
+      await sendReceiptFor(orderId);
+    } catch {
+      // receipt can be re-sent later; never affects the payment
+    }
+  });
   revalidate(orderId);
   return res;
 }
