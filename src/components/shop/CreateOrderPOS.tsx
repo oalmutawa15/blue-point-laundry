@@ -96,6 +96,7 @@ export function CreateOrderPOS() {
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("all");
   const [cart, setCart] = useState<CartLine[]>([]);
+  const [pickingItem, setPickingItem] = useState<FlatPriceItem | null>(null);
 
   // Custom item form
   const [showCustom, setShowCustom] = useState(false);
@@ -125,10 +126,8 @@ export function CreateOrderPOS() {
     return !s || it.en.toLowerCase().includes(s) || it.ar.includes(q.trim());
   });
 
-  function addToCart(item: FlatPriceItem) {
-    const service: PriceService = "wash";
-    const priceFils = priceForItem(item, service) ?? 0;
-    setCart((c) => [...c, { uid: uidSeq++, name: name(item), item, service, qty: 1, priceFils }]);
+  function addToCart(item: FlatPriceItem, service: PriceService, qty: number, priceFils: number) {
+    setCart((c) => [...c, { uid: uidSeq++, name: name(item), item, service, qty, priceFils }]);
   }
 
   function addCustom(itemName: string, priceFils: number) {
@@ -273,7 +272,7 @@ export function CreateOrderPOS() {
             <button
               key={`${it.categoryKey}-${it.key}`}
               type="button"
-              onClick={() => addToCart(it)}
+              onClick={() => setPickingItem(it)}
               className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card p-4 text-center transition-shadow hover:shadow-md"
             >
               <span className="flex h-12 w-12 items-center justify-center rounded-full bg-brand/10 text-brand">
@@ -490,6 +489,144 @@ export function CreateOrderPOS() {
           className="w-full rounded-xl bg-brand px-4 py-3.5 text-base font-bold text-brand-foreground disabled:opacity-50"
         >
           {busy ? t.common.saving : t.pos.createOrder}
+        </button>
+      </div>
+
+      {pickingItem && (
+        <AddItemModal
+          item={pickingItem}
+          name={name}
+          onClose={() => setPickingItem(null)}
+          onAdd={(service, qty, priceFils) => {
+            addToCart(pickingItem, service, qty, priceFils);
+            setPickingItem(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// Tap an item → pick a service, price and quantity, then add to the order.
+function AddItemModal({
+  item,
+  name,
+  onClose,
+  onAdd,
+}: {
+  item: FlatPriceItem;
+  name: (o: { en: string; ar: string }) => string;
+  onClose: () => void;
+  onAdd: (service: PriceService, qty: number, priceFils: number) => void;
+}) {
+  const { t } = useLang();
+  // Order to match the reference: Dry Clean, Wash+Iron, Iron.
+  const SERVICE_ORDER: PriceService[] = ["dryclean", "wash", "iron"];
+  const firstAvailable = SERVICE_ORDER.find((s) => priceForItem(item, s) != null) ?? "wash";
+  const [service, setService] = useState<PriceService>(firstAvailable);
+  const [priceKwd, setPriceKwd] = useState<string>(() => {
+    const p = priceForItem(item, firstAvailable);
+    return p != null ? filsToKwd(p) : "";
+  });
+  const [qty, setQty] = useState(1);
+
+  function pickService(s: PriceService) {
+    setService(s);
+    const p = priceForItem(item, s);
+    if (p != null) setPriceKwd(filsToKwd(p));
+  }
+
+  const priceFils = Math.round(parseFloat(priceKwd || "0") * 1000);
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose}>
+      <div
+        className="h-full w-full max-w-md overflow-auto bg-background p-5 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-6 flex items-center justify-between">
+          <h2 className="text-xl font-extrabold">{t.pos.addItem}</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t.customers.cancel}
+            className="rounded-full border border-border p-2 text-muted-foreground"
+          >
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+          </button>
+        </div>
+
+        <div className="flex flex-col items-center gap-3">
+          <span className="flex h-24 w-24 items-center justify-center rounded-2xl bg-brand/10 text-brand">
+            <svg className="h-12 w-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3h12l-1.5 4h-9L6 3Z" /><path d="M7.5 7 5 11v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9l-2.5-4" /></svg>
+          </span>
+          <p className="text-lg font-bold">{name(item)}</p>
+        </div>
+
+        <p className="mt-8 text-center text-sm font-bold text-muted-foreground">{t.pos.selectService}</p>
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          {SERVICE_ORDER.map((s) => {
+            const available = priceForItem(item, s) != null;
+            const selected = service === s;
+            return (
+              <button
+                key={s}
+                type="button"
+                disabled={!available}
+                onClick={() => pickService(s)}
+                className={`relative flex flex-col items-center gap-1.5 rounded-2xl border p-3 text-center text-xs font-bold transition-colors ${
+                  selected ? "border-brand bg-brand-soft text-brand" : "border-border text-foreground"
+                } ${!available ? "opacity-40" : ""}`}
+              >
+                {selected && (
+                  <span className="absolute end-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-brand text-brand-foreground">
+                    <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="m20 6-11 11-5-5" /></svg>
+                  </span>
+                )}
+                <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="12" cy="12" r="3.5" /></svg>
+                {t.shop.services[s]}
+              </button>
+            );
+          })}
+        </div>
+
+        <p className="mt-8 text-center text-sm font-bold text-muted-foreground">{t.pos.pricePerItem}</p>
+        <div className="mx-auto mt-2 flex max-w-[200px] items-center gap-1 rounded-xl border border-border bg-white px-3 py-2.5">
+          <input
+            value={priceKwd}
+            onChange={(e) => setPriceKwd(e.target.value.replace(/[^\d.]/g, ""))}
+            inputMode="decimal"
+            className="w-full bg-transparent text-center text-lg font-bold tabular-nums outline-none"
+          />
+          <span className="text-xs font-semibold text-muted-foreground">{t.prices.kd}</span>
+        </div>
+
+        <p className="mt-8 text-center text-sm font-bold text-muted-foreground">{t.pos.quantity}</p>
+        <div className="mt-2 flex items-center justify-center gap-5">
+          <button
+            type="button"
+            onClick={() => setQty((v) => Math.max(1, v - 1))}
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-border text-xl font-bold text-brand"
+          >
+            −
+          </button>
+          <span className="w-10 text-center text-xl font-extrabold tabular-nums">{qty}</span>
+          <button
+            type="button"
+            onClick={() => setQty((v) => v + 1)}
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-border text-xl font-bold text-brand"
+          >
+            +
+          </button>
+        </div>
+
+        <button
+          type="button"
+          disabled={!priceKwd || priceFils <= 0}
+          onClick={() => onAdd(service, qty, priceFils)}
+          className="mt-10 w-full rounded-xl bg-brand px-4 py-3.5 text-base font-bold text-brand-foreground disabled:opacity-50"
+        >
+          {t.pos.addToOrder} · {filsToKwd(qty * priceFils)} {t.prices.kd}
         </button>
       </div>
     </div>

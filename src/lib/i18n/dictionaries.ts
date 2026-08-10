@@ -118,6 +118,11 @@ export const dictionaries = {
       customName: "اسم الصنف",
       customPrice: "السعر (د.ك)",
       add: "إضافة",
+      addItem: "إضافة صنف",
+      selectService: "اختر الخدمة",
+      pricePerItem: "السعر للقطعة",
+      quantity: "الكمية",
+      addToOrder: "إضافة إلى الطلب",
     },
     receipt: {
       refundTitle: "إيصال استرجاع",
@@ -622,6 +627,11 @@ export const dictionaries = {
       customName: "Item name",
       customPrice: "Price (KWD)",
       add: "Add",
+      addItem: "Add Item",
+      selectService: "Select service",
+      pricePerItem: "Price per item",
+      quantity: "Quantity",
+      addToOrder: "Add to order",
     },
     receipt: {
       refundTitle: "Refund Receipt",
