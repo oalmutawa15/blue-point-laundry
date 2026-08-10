@@ -202,6 +202,7 @@ export const dictionaries = {
       txnRefund: "استرجاع",
       txnAdjustment: "تعديل",
       amountKwd: "المبلغ (د.ك)",
+      allTypes: "كل الأنواع",
     },
     profile: {
       title: "حسابي",
@@ -737,6 +738,7 @@ export const dictionaries = {
       txnRefund: "Refund",
       txnAdjustment: "Adjustment",
       amountKwd: "Amount (KWD)",
+      allTypes: "All transaction types",
     },
     profile: {
       title: "Profile",

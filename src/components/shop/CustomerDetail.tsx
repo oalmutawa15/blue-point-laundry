@@ -339,7 +339,7 @@ function TransactionsTab({
       >
         {TYPES.map((tp) => (
           <option key={tp} value={tp}>
-            {tp === "all" ? t.customers.all : label[tp]}
+            {tp === "all" ? t.customers.allTypes : label[tp]}
           </option>
         ))}
       </select>
