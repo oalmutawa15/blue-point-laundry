@@ -4,7 +4,7 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { notifyDelivered } from "@/lib/notify";
+import { notifyDelivered, notifyCustomerStage } from "@/lib/notify";
 
 type Ok = { ok: true } | { ok: false; error: string };
 
@@ -23,12 +23,15 @@ export async function markPickedUp(orderId: string): Promise<Ok> {
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "unauthorized" };
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("orders")
     .update({ status: "picked_up" })
     .eq("id", orderId)
-    .eq("pickup_driver_id", user.id);
+    .eq("pickup_driver_id", user.id)
+    .select("order_no, customer_id")
+    .single();
   if (error) return { ok: false, error: error.message };
+  await notifyCustomerStage(orderId, data.order_no, data.customer_id, "picked_up");
   revalidate(orderId);
   return { ok: true };
 }

@@ -6,16 +6,23 @@ import "server-only";
 
 export type WaResult = { ok: boolean; error?: string };
 
+// UltraMsg is the default (and only) provider. It's considered configured as
+// soon as the instance id + token are present — no separate WHATSAPP_PROVIDER
+// var required (a missing provider var was silently disabling all sends).
+function ultramsgEnabled(): boolean {
+  const provider = process.env.WHATSAPP_PROVIDER;
+  const hasCreds = !!process.env.ULTRAMSG_INSTANCE_ID && !!process.env.ULTRAMSG_TOKEN;
+  // Enabled when creds exist, unless the provider is explicitly set to something
+  // other than ultramsg.
+  return hasCreds && (!provider || provider === "ultramsg");
+}
+
 export function whatsappConfigured(): boolean {
-  return (
-    process.env.WHATSAPP_PROVIDER === "ultramsg" &&
-    !!process.env.ULTRAMSG_INSTANCE_ID &&
-    !!process.env.ULTRAMSG_TOKEN
-  );
+  return ultramsgEnabled();
 }
 
 export async function sendWhatsApp(to: string, body: string): Promise<WaResult> {
-  if (process.env.WHATSAPP_PROVIDER === "ultramsg") {
+  if (ultramsgEnabled()) {
     const instance = process.env.ULTRAMSG_INSTANCE_ID;
     const token = process.env.ULTRAMSG_TOKEN;
     if (!instance || !token) return { ok: false, error: "not_configured" };
