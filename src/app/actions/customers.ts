@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { getStaffProfile, emailForPhone, passwordForPhone } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -21,6 +22,26 @@ export async function listShopCustomers(): Promise<ShopCustomer[]> {
   const admin = createAdminClient();
   const { data } = await admin.rpc("shop_customer_list" as never);
   return (data ?? []) as unknown as ShopCustomer[];
+}
+
+// Add credit to a customer's wallet (shop top-up). Staff only.
+export async function addCustomerCredit(
+  customerId: string,
+  amountKwd: number,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!(await getStaffProfile())) return { ok: false, error: "forbidden" };
+  const fils = Math.round((Number(amountKwd) || 0) * 1000);
+  if (fils <= 0) return { ok: false, error: "invalid_amount" };
+  const admin = createAdminClient();
+  const { error } = await admin.rpc("wallet_topup", {
+    p_customer: customerId,
+    p_amount: fils,
+    p_reference: `shop-${randomUUID()}`,
+    p_note: "Shop credit",
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath(`/shop/customers/${customerId}`);
+  return { ok: true };
 }
 
 // Add a new customer (name + phone). Staff only. Idempotent on phone.
