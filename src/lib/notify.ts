@@ -1,6 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendWhatsApp, whatsappConfigured } from "@/lib/whatsapp";
+import { sendWhatsApp, sendWhatsAppImage, whatsappConfigured } from "@/lib/whatsapp";
 
 // Records an outbound message and sends it via WhatsApp when a gateway is configured.
 // Never throws — a failed send is logged and recorded, but won't break the order flow.
@@ -69,6 +69,85 @@ export async function notifyCustomerStage(
     template: `customer_${status}`,
     message: build(orderNo),
   });
+}
+
+// Records an outbound WhatsApp IMAGE (photo by public URL) and sends it when a
+// gateway is configured. Same logging behaviour as record(). Never throws.
+async function recordImage(
+  admin: SupabaseAdmin,
+  args: {
+    orderId: string;
+    recipientId: string | null;
+    recipientPhone: string | null;
+    template: string;
+    caption: string;
+    imageUrl: string;
+  },
+) {
+  let status = "queued";
+  try {
+    if (whatsappConfigured() && args.recipientPhone) {
+      const res = await sendWhatsAppImage(args.recipientPhone, args.imageUrl, args.caption);
+      status = res.ok ? "sent" : "failed";
+      if (!res.ok) console.warn(`[WhatsApp img] send failed → ${args.recipientPhone}: ${res.error}`);
+    } else {
+      console.log(`[WhatsApp img mock] → ${args.recipientPhone}: ${args.imageUrl}`);
+    }
+    await admin.from("notifications").insert({
+      order_id: args.orderId,
+      recipient_id: args.recipientId,
+      recipient_phone: args.recipientPhone,
+      template: args.template,
+      message: args.caption,
+      channel: "whatsapp",
+      status,
+    });
+  } catch (e) {
+    console.warn(`[notify img] error: ${(e as Error).message}`);
+  }
+}
+
+// Delivered with a proof photo → send the PHOTO to the customer and to shop staff.
+export async function notifyDeliveryPhoto(
+  orderId: string,
+  orderNo: string,
+  customerId: string | null,
+  photoUrl: string,
+) {
+  const admin = createAdminClient();
+
+  // Customer gets the photo as their "delivered" message.
+  if (customerId) {
+    const { data: c } = await admin
+      .from("profiles")
+      .select("phone")
+      .eq("id", customerId)
+      .single();
+    await recordImage(admin, {
+      orderId,
+      recipientId: customerId,
+      recipientPhone: c?.phone ?? null,
+      template: "delivered_photo",
+      caption: `✅ تم توصيل طلبك ${orderNo} بنجاح. هذه صورة التسليم. شكراً لاختيارك بلو بوينت.`,
+      imageUrl: photoUrl,
+    });
+  }
+
+  // Shop/admin staff also receive the delivery photo.
+  const { data: staff } = await admin
+    .from("profiles")
+    .select("id, phone")
+    .in("role", ["shop", "admin"]);
+  for (const s of staff ?? []) {
+    await recordImage(admin, {
+      orderId,
+      recipientId: s.id,
+      recipientPhone: s.phone,
+      template: "delivered_photo_shop",
+      caption: `📷 تم تسليم الطلب ${orderNo}. صورة التسليم مرفقة.`,
+      imageUrl: photoUrl,
+    });
+  }
 }
 
 // Receipt published → send the customer a WhatsApp with the receipt link.

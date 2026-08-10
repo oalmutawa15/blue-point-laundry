@@ -46,3 +46,34 @@ export async function sendWhatsApp(to: string, body: string): Promise<WaResult> 
   }
   return { ok: false, error: "no_provider" };
 }
+
+// Send an image (by public URL) with an optional caption over WhatsApp.
+export async function sendWhatsAppImage(
+  to: string,
+  imageUrl: string,
+  caption: string,
+): Promise<WaResult> {
+  if (ultramsgEnabled()) {
+    const instance = process.env.ULTRAMSG_INSTANCE_ID;
+    const token = process.env.ULTRAMSG_TOKEN;
+    if (!instance || !token) return { ok: false, error: "not_configured" };
+    try {
+      const res = await fetch(`https://api.ultramsg.com/${instance}/messages/image`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ token, to, image: imageUrl, caption }).toString(),
+      });
+      const json = (await res.json().catch(() => ({}))) as {
+        sent?: string | boolean;
+        error?: string;
+      };
+      if (!res.ok || json.error) {
+        return { ok: false, error: json.error || `http_${res.status}` };
+      }
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: (e as Error).message };
+    }
+  }
+  return { ok: false, error: "no_provider" };
+}

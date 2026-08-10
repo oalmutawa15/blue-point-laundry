@@ -4,7 +4,7 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { notifyDelivered, notifyCustomerStage } from "@/lib/notify";
+import { notifyDelivered, notifyCustomerStage, notifyDeliveryPhoto } from "@/lib/notify";
 
 type Ok = { ok: true } | { ok: false; error: string };
 
@@ -79,7 +79,13 @@ export async function markDelivered(orderId: string, photoDataUrl?: string): Pro
     return { ok: false, error: error.message };
   }
 
-  await notifyDelivered(orderId, data.order_no, data.customer_id);
+  // Send the delivery-proof photo to the customer AND the shop. If for some
+  // reason there's no photo, fall back to the plain "delivered" text.
+  if (photoUrl) {
+    await notifyDeliveryPhoto(orderId, data.order_no, data.customer_id, photoUrl);
+  } else {
+    await notifyDelivered(orderId, data.order_no, data.customer_id);
+  }
   revalidate(orderId);
   return { ok: true };
 }
