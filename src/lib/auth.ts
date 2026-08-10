@@ -39,3 +39,11 @@ export const getSessionProfile = cache(async (): Promise<Profile | null> => {
     .single();
   return (data as Profile) ?? null;
 });
+
+// Returns the current profile only if it's a staff member (shop or admin),
+// otherwise null. Use to guard server actions that use the service-role client
+// (which bypasses RLS) — those actions must authorize the caller themselves.
+export async function getStaffProfile(): Promise<Profile | null> {
+  const p = await getSessionProfile();
+  return p && (p.role === "shop" || p.role === "admin") ? p : null;
+}

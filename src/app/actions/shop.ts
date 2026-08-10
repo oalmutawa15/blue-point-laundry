@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getStaffProfile } from "@/lib/auth";
 import { notifyPickupAssigned, notifyReadyForDelivery } from "@/lib/notify";
 import type { Database } from "@/types/database";
 
@@ -27,6 +28,7 @@ function revalidate(orderId: string) {
 }
 
 async function setStatus(orderId: string, status: OrderStatus): Promise<Ok> {
+  if (!(await getStaffProfile())) return { ok: false, error: "forbidden" };
   const supabase = await createClient();
   const { error } = await supabase
     .from("orders")
@@ -44,6 +46,7 @@ async function setStatus(orderId: string, status: OrderStatus): Promise<Ok> {
 
 // new -> pickup_requested: assign a driver to pick up from the customer.
 export async function assignPickupDriver(orderId: string, driverId: string): Promise<Ok> {
+  if (!(await getStaffProfile())) return { ok: false, error: "forbidden" };
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("orders")
@@ -68,6 +71,7 @@ export async function saveIntake(
   items: ItemInput[],
   deliveryDate: string | null,
 ): Promise<Ok> {
+  if (!(await getStaffProfile())) return { ok: false, error: "forbidden" };
   const supabase = await createClient();
 
   await supabase.from("order_items").delete().eq("order_id", orderId);
@@ -114,6 +118,7 @@ export async function markReady(orderId: string): Promise<Ok> {
 
 // ready -> delivering: assign a delivery driver and dispatch.
 export async function assignDeliveryDriver(orderId: string, driverId: string): Promise<Ok> {
+  if (!(await getStaffProfile())) return { ok: false, error: "forbidden" };
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("orders")
@@ -135,6 +140,7 @@ export async function cancelOrder(
   reason: string,
   refund: boolean,
 ): Promise<{ ok: true; refundFils: number; refundType: RefundType } | { ok: false; error: string }> {
+  if (!(await getStaffProfile())) return { ok: false, error: "forbidden" };
   const cleanReason = reason?.trim();
   if (!cleanReason) return { ok: false, error: "reason_required" };
 

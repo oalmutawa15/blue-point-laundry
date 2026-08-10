@@ -2,14 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { emailForPhone, passwordForPhone } from "@/lib/auth";
+import { emailForPhone, passwordForPhone, getStaffProfile } from "@/lib/auth";
 import { normalizeKwPhone } from "@/lib/phone";
 import type { ItemInput } from "./shop";
 
 export type CustomerHit = { id: string; full_name: string | null; phone: string };
 
 // Search existing customers by name or phone (for the walk-in order builder).
+// Staff only — this reads across all customers via the service-role client.
 export async function searchCustomers(query: string): Promise<CustomerHit[]> {
+  if (!(await getStaffProfile())) return [];
   const q = query.replace(/[,()%*]/g, " ").trim();
   if (q.length < 2) return [];
   const admin = createAdminClient();
@@ -67,6 +69,7 @@ export async function createWalkInOrder(input: {
   deliveryDate?: string | null;
   note?: string;
 }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  if (!(await getStaffProfile())) return { ok: false, error: "forbidden" };
   if (!input.items.length) return { ok: false, error: "no_items" };
 
   const cust = await findOrCreateCustomer({
