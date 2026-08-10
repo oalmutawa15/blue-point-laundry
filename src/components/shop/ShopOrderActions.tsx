@@ -239,6 +239,15 @@ function IntakeForm({ orderId }: { orderId: string }) {
               className="rounded-lg border border-border bg-white px-2 py-2 text-center text-sm tabular-nums outline-none focus:border-brand"
             />
           </div>
+          {/* Per-line total = quantity × unit price, so the price visibly grows with qty. */}
+          <div className="mt-2 flex items-center justify-between text-xs">
+            <span className="text-muted-foreground tabular-nums">
+              {r.qty || 0} × {r.priceKwd || "0"}
+            </span>
+            <span className="font-extrabold tabular-nums">
+              {formatMoney((r.qty || 0) * kwdToFils(r.priceKwd || "0"), lang)}
+            </span>
+          </div>
           {rows.length > 1 && (
             <button
               onClick={() => setRows((rs) => rs.filter((_, idx) => idx !== i))}
