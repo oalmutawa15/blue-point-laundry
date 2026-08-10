@@ -21,7 +21,7 @@ async function geocodeSearch(area: string, block: string, street: string) {
   return (await res.json()) as { lat: number | null; lng: number | null };
 }
 
-export function AddressForm({ onDone }: { onDone: () => void }) {
+export function AddressForm({ onDone }: { onDone: (addressId: string) => void }) {
   const { t, lang } = useLang();
   const [label, setLabel] = useState("");
   const [areaEn, setAreaEn] = useState("");
@@ -144,7 +144,7 @@ export function AddressForm({ onDone }: { onDone: () => void }) {
       setError(res.error === "otp_invalid" ? t.addresses.otpInvalid : res.error);
       return;
     }
-    onDone();
+    onDone(res.id);
   }
 
   if (otpStage) {

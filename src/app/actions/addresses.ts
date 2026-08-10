@@ -71,7 +71,7 @@ export async function requestAddressOtp(): Promise<
 export async function addAddress(
   input: AddressInput,
   code: string,
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -102,27 +102,31 @@ export async function addAddress(
   ]);
   const isFirst = (existing?.length ?? 0) === 0;
 
-  const { error } = await supabase.from("addresses").insert({
-    customer_id: user.id,
-    label: input.label?.trim() || null,
-    area: input.area.trim(),
-    block: input.block?.trim() || null,
-    street: input.street?.trim() || null,
-    building: input.building?.trim() || null,
-    floor: input.floor?.trim() || null,
-    apartment: input.apartment?.trim() || null,
-    extra_directions: input.extra_directions?.trim() || null,
-    // Contact number is always the signed-in customer's own phone.
-    contact_phone: prof?.phone ?? null,
-    lat: input.lat ?? null,
-    lng: input.lng ?? null,
-    is_default: isFirst,
-  });
+  const { data: newAddress, error } = await supabase
+    .from("addresses")
+    .insert({
+      customer_id: user.id,
+      label: input.label?.trim() || null,
+      area: input.area.trim(),
+      block: input.block?.trim() || null,
+      street: input.street?.trim() || null,
+      building: input.building?.trim() || null,
+      floor: input.floor?.trim() || null,
+      apartment: input.apartment?.trim() || null,
+      extra_directions: input.extra_directions?.trim() || null,
+      // Contact number is always the signed-in customer's own phone.
+      contact_phone: prof?.phone ?? null,
+      lat: input.lat ?? null,
+      lng: input.lng ?? null,
+      is_default: isFirst,
+    })
+    .select("id")
+    .single();
   if (error) return { ok: false, error: error.message };
 
   revalidatePath("/addresses");
   revalidatePath("/home");
-  return { ok: true };
+  return { ok: true, id: newAddress.id };
 }
 
 export async function setDefaultAddress(id: string): Promise<{ ok: boolean }> {

@@ -36,7 +36,9 @@ export function RequestPickup({ addresses }: { addresses: Tables<"addresses">[] 
   // the customer to add their location first.
   function onPress() {
     if (!hasAddress) {
-      router.push("/addresses");
+      // First-time user: go add a location, then the pickup is placed
+      // automatically (no need to come back and tap again).
+      router.push("/addresses?request=1");
       return;
     }
     submit();

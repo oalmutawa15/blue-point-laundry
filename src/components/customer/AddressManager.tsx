@@ -1,17 +1,45 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useLang } from "@/lib/i18n/LanguageProvider";
 import { formatAddress } from "@/lib/address";
 import { AddressForm } from "./AddressForm";
 import { deleteAddress, setDefaultAddress } from "@/app/actions/addresses";
+import { createPickupRequest } from "@/app/actions/orders";
 import type { Tables } from "@/types/database";
 
 export function AddressManager({ addresses }: { addresses: Tables<"addresses">[] }) {
   const { t, lang } = useLang();
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const searchParams = useSearchParams();
+  // Came here from the home pickup button → open the form and, once an address
+  // is added, place the pickup request straight away.
+  const wantsPickup = searchParams.get("request") === "1";
+  const [open, setOpen] = useState(wantsPickup && addresses.length === 0);
+  const [placing, setPlacing] = useState(false);
+  const [placeError, setPlaceError] = useState<string | null>(null);
+
+  async function handleAdded(addressId: string) {
+    setOpen(false);
+    if (!wantsPickup) {
+      router.refresh();
+      return;
+    }
+    // Place the pickup request with the just-added address.
+    setPlacing(true);
+    setPlaceError(null);
+    const res = await createPickupRequest(addressId, "");
+    setPlacing(false);
+    if (res.ok) {
+      router.push(`/orders/${res.id}`);
+      router.refresh();
+      return;
+    }
+    setPlaceError(res.error);
+    router.refresh();
+  }
 
   return (
     <div className="space-y-4">
@@ -24,6 +52,25 @@ export function AddressManager({ addresses }: { addresses: Tables<"addresses">[]
           + {t.addresses.add}
         </button>
       </div>
+
+      {placing && (
+        <p className="rounded-2xl bg-brand-soft px-4 py-3 text-center text-sm font-semibold text-brand">
+          {t.common.loading}
+        </p>
+      )}
+      {placeError === "insufficient_credit" ? (
+        <div className="rounded-2xl bg-danger/10 px-4 py-3 text-sm">
+          <p className="font-semibold text-danger">{t.home.insufficientCredit}</p>
+          <Link
+            href="/credit"
+            className="mt-2 inline-block rounded-lg bg-brand px-3 py-1.5 text-xs font-bold text-brand-foreground"
+          >
+            {t.home.topUpNow}
+          </Link>
+        </div>
+      ) : placeError ? (
+        <p className="rounded-2xl bg-danger/10 px-4 py-3 text-sm font-semibold text-danger">{placeError}</p>
+      ) : null}
 
       {addresses.length === 0 ? (
         <p className="rounded-2xl bg-card p-6 text-center text-sm text-muted-foreground">
@@ -78,12 +125,7 @@ export function AddressManager({ addresses }: { addresses: Tables<"addresses">[]
                 {t.common.close}
               </button>
             </div>
-            <AddressForm
-              onDone={() => {
-                setOpen(false);
-                router.refresh();
-              }}
-            />
+            <AddressForm onDone={handleAdded} />
           </div>
         </div>
       )}
