@@ -278,9 +278,14 @@ export function CreateOrderPOS() {
               onClick={() => setPickingItem(it)}
               className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card p-4 text-center transition-shadow hover:shadow-md"
             >
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-brand/10 text-brand">
-                <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3h12l-1.5 4h-9L6 3Z" /><path d="M7.5 7 5 11v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9l-2.5-4" /></svg>
-              </span>
+              {it.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={it.image} alt={name(it)} className="h-16 w-16 rounded-lg object-contain" />
+              ) : (
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-brand/10 text-brand">
+                  <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3h12l-1.5 4h-9L6 3Z" /><path d="M7.5 7 5 11v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9l-2.5-4" /></svg>
+                </span>
+              )}
               <span className="text-sm font-semibold leading-tight">{name(it)}</span>
               <span className="text-xs text-muted-foreground">
                 {it.from != null ? filsToKwd(it.from) : filsToKwd(it.prices?.wash ?? 0)} {t.prices.kd}
@@ -561,9 +566,14 @@ function AddItemModal({
         </div>
 
         <div className="flex flex-col items-center gap-3">
-          <span className="flex h-24 w-24 items-center justify-center rounded-2xl bg-brand/10 text-brand">
-            <svg className="h-12 w-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3h12l-1.5 4h-9L6 3Z" /><path d="M7.5 7 5 11v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9l-2.5-4" /></svg>
-          </span>
+          {item.image ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={item.image} alt={name(item)} className="h-28 w-28 rounded-2xl object-contain" />
+          ) : (
+            <span className="flex h-24 w-24 items-center justify-center rounded-2xl bg-brand/10 text-brand">
+              <svg className="h-12 w-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3h12l-1.5 4h-9L6 3Z" /><path d="M7.5 7 5 11v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9l-2.5-4" /></svg>
+            </span>
+          )}
           <p className="text-lg font-bold">{name(item)}</p>
         </div>
 

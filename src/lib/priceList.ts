@@ -17,6 +17,7 @@ export type PriceItem = {
   ar: string;
   prices?: ServicePrices; // for garments
   from?: number; // for cleaning items (single "starting from" price)
+  image?: string; // optional product photo (path under /public)
 };
 
 export type PriceCategory = {
@@ -40,7 +41,7 @@ export const PRICE_CATEGORIES: PriceCategory[] = [
     ar: "رجالي",
     kind: "garment",
     items: [
-      { key: "dishdasha_summer", en: "Summer Dishdasha", ar: "دشداشة صيفية", prices: p(700, 750, 400) },
+      { key: "dishdasha_summer", en: "Summer Dishdasha", ar: "دشداشة صيفية", prices: p(700, 750, 400), image: "/items/dishdasha_summer.jpg" },
       { key: "dishdasha_winter", en: "Winter Dishdasha", ar: "دشداشة شتوية", prices: p(900, 900, 500) },
       { key: "ghutra", en: "Ghutra / Shemagh", ar: "غترة / شماغ", prices: p(400, 500, 300) },
       { key: "shirt", en: "Shirt", ar: "قميص", prices: p(600, 750, 300) },
