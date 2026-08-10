@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useLang } from "@/lib/i18n/LanguageProvider";
+import { useRealtimeOrders } from "@/lib/useRealtimeOrders";
 import { OrderStatusBadge } from "@/components/customer/OrderStatusBadge";
 import { formatAddress } from "@/lib/address";
 import { formatMoney } from "@/lib/money";
@@ -26,6 +27,7 @@ const PHASES: OrderStatus[] = [
 export function ShopOrderList({ orders }: { orders: OrderWithRelations[] }) {
   const { t, lang } = useLang();
   const [filter, setFilter] = useState<"all" | OrderStatus>("all");
+  useRealtimeOrders("shop");
 
   const list = filter === "all" ? orders : orders.filter((o) => o.status === filter);
   const countFor = (f: "all" | OrderStatus) =>

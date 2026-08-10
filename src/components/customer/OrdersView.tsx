@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useLang } from "@/lib/i18n/LanguageProvider";
+import { useRealtimeOrders } from "@/lib/useRealtimeOrders";
 import { OrderCard } from "./OrderCard";
 import { formatMoney } from "@/lib/money";
 import type { Tables } from "@/types/database";
@@ -17,6 +18,7 @@ export function OrdersView({
 }) {
   const { t, lang } = useLang();
   const [filter, setFilter] = useState<Filter>("all");
+  useRealtimeOrders("customer");
 
   const match = (o: Tables<"orders">) => {
     if (filter === "all") return true;

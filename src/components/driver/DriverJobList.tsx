@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLang } from "@/lib/i18n/LanguageProvider";
+import { useRealtimeOrders } from "@/lib/useRealtimeOrders";
 import { formatAddress, mapsUrl } from "@/lib/address";
 import { markPickedUp } from "@/app/actions/driver";
 import type { OrderWithRelations } from "@/lib/orderTypes";
@@ -85,6 +86,7 @@ export function DriverJobList({
   deliveries: OrderWithRelations[];
 }) {
   const { t } = useLang();
+  useRealtimeOrders("driver");
   const empty = pickups.length === 0 && deliveries.length === 0;
 
   return (
