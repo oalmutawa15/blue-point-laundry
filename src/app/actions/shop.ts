@@ -3,12 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import {
-  notifyPickupAssigned,
-  notifyReadyForDelivery,
-  notifyCustomerStage,
-  notifyCustomerCancelled,
-} from "@/lib/notify";
+import { notifyPickupAssigned, notifyReadyForDelivery } from "@/lib/notify";
 import type { Database } from "@/types/database";
 
 export type RefundType = "wallet" | "cash" | "none";
@@ -33,17 +28,16 @@ function revalidate(orderId: string) {
 
 async function setStatus(orderId: string, status: OrderStatus): Promise<Ok> {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("orders")
     .update({ status })
-    .eq("id", orderId)
-    .select("order_no, customer_id")
-    .single();
+    .eq("id", orderId);
   if (error) {
     if (/INSUFFICIENT_CREDIT/.test(error.message)) return { ok: false, error: "insufficient_credit" };
     return { ok: false, error: error.message };
   }
-  await notifyCustomerStage(orderId, data.order_no, data.customer_id, status);
+  // Customer is intentionally NOT messaged for these intermediate steps
+  // (received / washing / ready) — they only get: picked up, receipt, delivered.
   revalidate(orderId);
   return { ok: true };
 }
@@ -55,11 +49,10 @@ export async function assignPickupDriver(orderId: string, driverId: string): Pro
     .from("orders")
     .update({ pickup_driver_id: driverId, status: "pickup_requested" })
     .eq("id", orderId)
-    .select("order_no, customer_id")
+    .select("order_no")
     .single();
   if (error) return { ok: false, error: error.message };
   await notifyPickupAssigned(orderId, data.order_no, driverId);
-  await notifyCustomerStage(orderId, data.order_no, data.customer_id, "pickup_requested");
   revalidate(orderId);
   return { ok: true };
 }
@@ -94,7 +87,7 @@ export async function saveIntake(
   const pieces = items.reduce((s, i) => s + i.qty, 0);
   const total = items.reduce((s, i) => s + i.qty * i.unit_price_fils, 0);
 
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("orders")
     .update({
       piece_count: pieces,
@@ -102,12 +95,9 @@ export async function saveIntake(
       delivery_date: deliveryDate,
       status: "awaiting_payment",
     })
-    .eq("id", orderId)
-    .select("order_no, customer_id")
-    .single();
+    .eq("id", orderId);
   if (error) return { ok: false, error: error.message };
 
-  await notifyCustomerStage(orderId, data.order_no, data.customer_id, "awaiting_payment");
   revalidate(orderId);
   return { ok: true };
 }
@@ -129,11 +119,10 @@ export async function assignDeliveryDriver(orderId: string, driverId: string): P
     .from("orders")
     .update({ delivery_driver_id: driverId, status: "delivering" })
     .eq("id", orderId)
-    .select("order_no, customer_id")
+    .select("order_no")
     .single();
   if (error) return { ok: false, error: error.message };
   await notifyReadyForDelivery(orderId, data.order_no, driverId);
-  await notifyCustomerStage(orderId, data.order_no, data.customer_id, "delivering");
   revalidate(orderId);
   return { ok: true };
 }
@@ -202,7 +191,6 @@ export async function cancelOrder(
     .eq("id", orderId);
   if (error) return { ok: false, error: error.message };
 
-  await notifyCustomerCancelled(orderId, order.order_no, order.customer_id, refundFils);
   revalidate(orderId);
   return { ok: true, refundFils, refundType };
 }

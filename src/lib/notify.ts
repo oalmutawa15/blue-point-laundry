@@ -39,17 +39,11 @@ async function record(
   }
 }
 
-// Customer-facing message for each order stage (Arabic, brand "بلو بوينت").
+// Customer messages — intentionally only the "picked up" stage here. The other
+// two customer touchpoints are the receipt link (notifyReceipt) and delivery
+// (notifyDelivered). No messages for the intermediate shop steps.
 const CUSTOMER_STAGE_MESSAGES: Record<string, (orderNo: string) => string> = {
-  pickup_requested: (o) =>
-    `📍 تم تعيين مندوب لاستلام طلبك ${o}. سيصلك قريباً لأخذ الملابس.`,
   picked_up: (o) => `🚗 استلم المندوب طلبك ${o} وهو في طريقه إلى المصبغة.`,
-  counting: (o) => `🧾 وصل طلبك ${o} إلى المصبغة ويتم الآن جرد القطع وتسعيرها.`,
-  awaiting_payment: (o) => `💳 طلبك ${o} جاهز للدفع. سيتم خصم قيمته من رصيدك.`,
-  washing: (o) => `🧼 تم تأكيد الدفع، وجارٍ غسل وكي طلبك ${o} الآن.`,
-  ready: (o) => `📦 طلبك ${o} جاهز! سيتم توصيله إليك قريباً.`,
-  delivering: (o) => `🚚 طلبك ${o} في الطريق إليك الآن.`,
-  delivered: (o) => `✅ تم توصيل طلبك ${o} بنجاح. شكراً لاختيارك بلو بوينت.`,
 };
 
 // Notify the customer of an order stage change. No-op for stages without a
@@ -74,34 +68,6 @@ export async function notifyCustomerStage(
     recipientPhone: c?.phone ?? null,
     template: `customer_${status}`,
     message: build(orderNo),
-  });
-}
-
-// Order cancelled → tell the customer, including the refund amount if any.
-export async function notifyCustomerCancelled(
-  orderId: string,
-  orderNo: string,
-  customerId: string | null,
-  refundFils: number,
-) {
-  if (!customerId) return;
-  const admin = createAdminClient();
-  const { data: c } = await admin
-    .from("profiles")
-    .select("phone")
-    .eq("id", customerId)
-    .single();
-  const kwd = (refundFils / 1000).toFixed(3);
-  const message =
-    refundFils > 0
-      ? `❌ تم إلغاء طلبك ${orderNo} واسترجاع ${kwd} د.ك. لأي استفسار تواصل معنا.`
-      : `❌ تم إلغاء طلبك ${orderNo}. لأي استفسار تواصل معنا.`;
-  await record(admin, {
-    orderId,
-    recipientId: customerId,
-    recipientPhone: c?.phone ?? null,
-    template: "customer_cancelled",
-    message,
   });
 }
 

@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { emailForPhone, passwordForPhone } from "@/lib/auth";
 import { normalizeKwPhone } from "@/lib/phone";
-import { notifyCustomerStage } from "@/lib/notify";
 import type { ItemInput } from "./shop";
 
 export type CustomerHit = { id: string; full_name: string | null; phone: string };
@@ -108,7 +107,6 @@ export async function createWalkInOrder(input: {
   );
   if (itemsErr) return { ok: false, error: itemsErr.message };
 
-  await notifyCustomerStage(order.id, order.order_no, cust.id, "washing");
   revalidatePath("/shop");
   return { ok: true, id: order.id };
 }
