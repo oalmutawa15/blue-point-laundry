@@ -386,6 +386,7 @@ export const dictionaries = {
       retakePhoto: "إعادة التقاط الصورة",
       deliveryPhoto: "صورة التسليم",
       photoRequired: "يجب إرفاق صورة قبل تأكيد التسليم",
+      photoTooLarge: "تعذّر رفع الصورة. حاول مرة أخرى بصورة أوضح أو أصغر.",
     },
 
     admin: {
@@ -889,6 +890,7 @@ export const dictionaries = {
       retakePhoto: "Retake photo",
       deliveryPhoto: "Delivery photo",
       photoRequired: "A photo is required before confirming delivery",
+      photoTooLarge: "Couldn't upload the photo. Please try again with a smaller/clearer photo.",
     },
 
     admin: {

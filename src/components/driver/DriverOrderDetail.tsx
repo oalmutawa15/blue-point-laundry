@@ -36,29 +36,41 @@ export function DriverOrderDetail({
   const isDelivery =
     order.delivery_driver_id === currentUserId && order.status === "delivering";
 
-  function onPickPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+  async function onPickPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setPhoto(typeof reader.result === "string" ? reader.result : null);
-    reader.readAsDataURL(file);
+    try {
+      setPhoto(await compressImage(file));
+    } catch {
+      // Fallback to the raw file if compression fails for any reason.
+      const reader = new FileReader();
+      reader.onload = () => setPhoto(typeof reader.result === "string" ? reader.result : null);
+      reader.readAsDataURL(file);
+    }
   }
 
   async function act(fn: () => Promise<{ ok: boolean; error?: string }>) {
     setBusy(true);
     setError(null);
-    const res = await fn();
-    if (!res.ok) {
+    try {
+      const res = await fn();
+      if (!res.ok) {
+        setBusy(false);
+        setError(
+          res.error === "insufficient_credit"
+            ? t.driver.insufficientCredit
+            : res.error ?? "error",
+        );
+        return;
+      }
+      router.replace("/driver");
+      router.refresh();
+    } catch {
+      // e.g. the photo was too large / network failed — surface it instead of
+      // leaving the button stuck on "Loading…".
       setBusy(false);
-      setError(
-        res.error === "insufficient_credit"
-          ? t.driver.insufficientCredit
-          : res.error ?? "error",
-      );
-      return;
+      setError(t.driver.photoTooLarge);
     }
-    router.replace("/driver");
-    router.refresh();
   }
 
   return (
@@ -174,4 +186,39 @@ export function DriverOrderDetail({
       )}
     </div>
   );
+}
+
+// Resize + JPEG-compress a camera photo in the browser so the upload stays small
+// (a raw phone photo can be several MB — far over the server action's limit,
+// which is what left the button stuck on "Loading…").
+async function compressImage(file: File, maxDim = 1280, quality = 0.7): Promise<string> {
+  const dataUrl: string = await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result as string);
+    r.onerror = () => reject(new Error("read_failed"));
+    r.readAsDataURL(file);
+  });
+  const img = document.createElement("img");
+  await new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve();
+    img.onerror = () => reject(new Error("decode_failed"));
+    img.src = dataUrl;
+  });
+  let { width, height } = img;
+  if (width > maxDim || height > maxDim) {
+    if (width >= height) {
+      height = Math.round((height * maxDim) / width);
+      width = maxDim;
+    } else {
+      width = Math.round((width * maxDim) / height);
+      height = maxDim;
+    }
+  }
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return dataUrl;
+  ctx.drawImage(img, 0, 0, width, height);
+  return canvas.toDataURL("image/jpeg", quality);
 }

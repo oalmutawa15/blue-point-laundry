@@ -115,6 +115,19 @@ export function ShopOrderDetail({
         </div>
       )}
 
+      {/* Delivery proof photo */}
+      {order.delivery_photo_url && (
+        <div className="rounded-2xl bg-card p-4 shadow-sm">
+          <h2 className="mb-2 font-bold">{t.driver.deliveryPhoto}</h2>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={order.delivery_photo_url}
+            alt={t.driver.deliveryPhoto}
+            className="w-full rounded-xl object-cover"
+          />
+        </div>
+      )}
+
       {/* Action panel */}
       <div className="rounded-2xl bg-card p-4 shadow-sm">
         <ShopOrderActions order={order} items={items} drivers={drivers} />
