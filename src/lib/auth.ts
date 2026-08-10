@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { createHmac } from "crypto";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/database";
@@ -21,7 +22,11 @@ export function passwordForPhone(e164: string): string {
 export type Profile = Tables<"profiles">;
 
 // Current signed-in user's profile, or null.
-export async function getSessionProfile(): Promise<Profile | null> {
+// Wrapped in React cache() so repeated calls within the SAME request (e.g. a
+// layout and its page both need the profile) share one auth + one profile
+// query instead of repeating them. Scope is a single request — no cross-request
+// or cross-user leakage, and the returned value is identical to before.
+export const getSessionProfile = cache(async (): Promise<Profile | null> => {
   const supabase = await createClient();
   const {
     data: { user },
@@ -33,4 +38,4 @@ export async function getSessionProfile(): Promise<Profile | null> {
     .eq("id", user.id)
     .single();
   return (data as Profile) ?? null;
-}
+});
