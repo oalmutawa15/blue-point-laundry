@@ -702,7 +702,7 @@ export const dictionaries = {
       phone: "Phone",
       ordersCount: "Orders",
       lastOrder: "Last order",
-      pending: "Pending",
+      pending: "Pending amount",
       walletBalance: "Balance",
       noCustomers: "No customers yet",
       addTitle: "New customer",
