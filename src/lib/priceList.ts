@@ -1,9 +1,14 @@
 // Blue Point Laundry price list. Prices are integer fils (1 KWD = 1000 fils),
 // transcribed from the official Blue Point price sheets.
 //
+// EXTRA_ITEMS (src/lib/extraItems.ts) are additional catalogue items with photos
+// but no fixed price — the shop sets the price when adding them to an order.
+//
 // Most garments have three service prices: washing+ironing, dryclean+ironing,
 // and iron-only. A price of null means the service isn't offered for that item.
 // "Cleaning" items (shoes/bags) have a single "starting from" price.
+
+import { EXTRA_ITEMS } from "./extraItems";
 
 export type ServicePrices = {
   wash: number | null; // washing & ironing
@@ -130,11 +135,24 @@ export type FlatPriceItem = PriceItem & {
 // Preferred display order (matches the order the item photos were provided,
 // Summer Dishdasha first). Items not listed keep their natural order, after.
 const DISPLAY_ORDER: string[] = [
+  // Official price-sheet items with photos (Summer Dishdasha first).
   "dishdasha_summer", "ghutra", "shirt", "tshirt", "pillow_case", "blouse",
   "duvet_double", "hijab", "jacket", "abaya", "sheet_double", "cap", "short",
   "dress", "men_suit_2", "dishdasha_winter", "sheet_single", "child_pieces",
   "overcoat", "skirt", "pillow", "blouse_silk", "duvet_single", "child_jacket",
   "tie", "men_suit_3", "ladies_suit_2", "tracksuit",
+  // Extra items with photos, in the order the customer supplied them.
+  "daraa_special_2", "bathrobe", "daraa", "gilet", "tracksuit_trouser",
+  "leather_shoes", "blanket_special", "bra", "child_fancy_dress",
+  "child_dishdasha", "pillow_special_small", "jean_jacket", "child_shorts",
+  "pyjamas", "boiler_suit", "duvet_special", "blanket_children",
+  "tracksuit_jacket", "child_sweater", "fancy_tshirt", "fancy_dress",
+  "long_shirt", "silk_nightgown", "vest", "bath_towel_large", "shoes_trainer",
+  "duvet_children", "party_dress", "sofa_cover_large", "toys", "shawl",
+  "dress_pleated", "tablecloth_ornate", "child_shirt", "officer_cap",
+  "school_uniform", "besht", "child_gutra", "saree", "doctors_coat", "ihram",
+  "dungaree", "tablecloth_normal", "hand_towel", "child_skirt",
+  "officer_trouser", "officer_shirt", "besht_winter", "niqab", "dress_special",
 ];
 
 // All price-list items flattened, tagged with their category — for the shop
@@ -149,6 +167,23 @@ export function allPriceItems(): FlatPriceItem[] {
       kind: c.kind,
     })),
   );
+  // Merge in the extra (photo-only, no fixed price) items, tagged with their
+  // category so they show up in the shop grid alongside the priced items.
+  const catByKey = new Map(PRICE_CATEGORIES.map((c) => [c.key, c]));
+  for (const ex of EXTRA_ITEMS) {
+    const c = catByKey.get(ex.categoryKey);
+    if (!c) continue;
+    items.push({
+      key: ex.key,
+      en: ex.en,
+      ar: ex.ar,
+      image: ex.image,
+      categoryKey: c.key,
+      categoryEn: c.en,
+      categoryAr: c.ar,
+      kind: c.kind,
+    });
+  }
   const rank = (k: string) => {
     const i = DISPLAY_ORDER.indexOf(k);
     return i === -1 ? DISPLAY_ORDER.length : i;

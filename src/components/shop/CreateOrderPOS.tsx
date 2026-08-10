@@ -287,9 +287,14 @@ export function CreateOrderPOS() {
                 </span>
               )}
               <span className="text-sm font-semibold leading-tight">{name(it)}</span>
-              <span className="text-xs text-muted-foreground">
-                {it.from != null ? filsToKwd(it.from) : filsToKwd(it.prices?.wash ?? 0)} {t.prices.kd}
-              </span>
+              {(() => {
+                const disp = it.from ?? it.prices?.wash ?? it.prices?.dryclean ?? it.prices?.iron ?? null;
+                return (
+                  <span className="text-xs text-muted-foreground">
+                    {disp != null ? `${filsToKwd(disp)} ${t.prices.kd}` : "—"}
+                  </span>
+                );
+              })()}
             </button>
           ))}
           {items.length === 0 && (
@@ -531,6 +536,9 @@ function AddItemModal({
   const { t } = useLang();
   // Order to match the reference: Dry Clean, Wash+Iron, Iron.
   const SERVICE_ORDER: PriceService[] = ["dryclean", "wash", "iron"];
+  // Extra items have no fixed price → every service is selectable and the staff
+  // type the price. Priced items only allow the services that have a price.
+  const hasFixedPrice = SERVICE_ORDER.some((s) => priceForItem(item, s) != null);
   const firstAvailable = SERVICE_ORDER.find((s) => priceForItem(item, s) != null) ?? "wash";
   const [service, setService] = useState<PriceService>(firstAvailable);
   const [priceKwd, setPriceKwd] = useState<string>(() => {
@@ -580,7 +588,7 @@ function AddItemModal({
         <p className="mt-8 text-center text-sm font-bold text-muted-foreground">{t.pos.selectService}</p>
         <div className="mt-3 grid grid-cols-3 gap-2">
           {SERVICE_ORDER.map((s) => {
-            const available = priceForItem(item, s) != null;
+            const available = hasFixedPrice ? priceForItem(item, s) != null : true;
             const selected = service === s;
             return (
               <button
