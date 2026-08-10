@@ -127,9 +127,20 @@ export type FlatPriceItem = PriceItem & {
   kind: PriceCategory["kind"];
 };
 
-// All price-list items flattened, tagged with their category — for the shop search.
+// Preferred display order (matches the order the item photos were provided,
+// Summer Dishdasha first). Items not listed keep their natural order, after.
+const DISPLAY_ORDER: string[] = [
+  "dishdasha_summer", "ghutra", "shirt", "tshirt", "pillow_case", "blouse",
+  "duvet_double", "hijab", "jacket", "abaya", "sheet_double", "cap", "short",
+  "dress", "men_suit_2", "dishdasha_winter", "sheet_single", "child_pieces",
+  "overcoat", "skirt", "pillow", "blouse_silk", "duvet_single", "child_jacket",
+  "tie", "men_suit_3", "ladies_suit_2", "tracksuit",
+];
+
+// All price-list items flattened, tagged with their category — for the shop
+// search/grid, sorted into the preferred display order.
 export function allPriceItems(): FlatPriceItem[] {
-  return PRICE_CATEGORIES.flatMap((c) =>
+  const items = PRICE_CATEGORIES.flatMap((c) =>
     c.items.map((it) => ({
       ...it,
       categoryKey: c.key,
@@ -138,6 +149,14 @@ export function allPriceItems(): FlatPriceItem[] {
       kind: c.kind,
     })),
   );
+  const rank = (k: string) => {
+    const i = DISPLAY_ORDER.indexOf(k);
+    return i === -1 ? DISPLAY_ORDER.length : i;
+  };
+  return items
+    .map((it, i) => ({ it, i }))
+    .sort((a, b) => rank(a.it.key) - rank(b.it.key) || a.i - b.i)
+    .map(({ it }) => it);
 }
 
 // The unit price (fils) for an item + service. Cleaning items ignore the service.
