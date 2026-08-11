@@ -164,7 +164,7 @@ export async function notifyReceipt(
     .select("phone")
     .eq("id", customerId)
     .single();
-  const message = `🧾 تم إصدار إيصال طلبك ${orderNo} من بلو بوينت.\nيمكنك عرض الإيصال وتحميله من هنا:\n${url}`;
+  const message = `🧼 بدأنا غسيل طلبك ${orderNo} في بلو بوينت.\nهذه فاتورة طلبك — يمكنك عرضها وتحميلها من هنا:\n${url}`;
   await record(admin, {
     orderId,
     recipientId: customerId,
