@@ -13,9 +13,15 @@ export async function GET(req: NextRequest) {
   const paymentId = req.nextUrl.searchParams.get("payment");
   if (!paymentId) return NextResponse.redirect(new URL("/credit", req.url));
 
-  // Kick off finalize but DON'T await it — never let it delay the redirect.
+  // Give the payment a short head start to settle BEFORE the result screen loads,
+  // so the customer usually lands on a definite "confirmed"/"rejected" instead of
+  // a spinner. Capped so a slow gateway can never freeze the redirect — if it's
+  // not settled in time, the result screen keeps polling.
   try {
-    void finalizeUpayments(paymentId).catch(() => {});
+    await Promise.race([
+      finalizeUpayments(paymentId).catch(() => {}),
+      new Promise((r) => setTimeout(r, 6000)),
+    ]);
   } catch {
     // ignore — the result screen polls regardless
   }

@@ -10,14 +10,16 @@ type ApiStatus = "pending" | "paid" | "failed";
 // "confirming" = still polling; "timeout" = we stopped polling without a final answer.
 type Status = "confirming" | "paid" | "failed" | "timeout";
 
-// Poll fast so we flip to "approved" the instant the capture lands — checking
-// every ~800ms for the first ~30s (when the vast majority of captures settle),
-// then easing off to ~2s so we still cover a slow capture for up to ~2 minutes
-// total without hammering the endpoint. Each poll re-verifies with UPayments.
-const FAST_MS = 800;
-const FAST_TRIES = 40; // ~32s of rapid polling
-const SLOW_MS = 2000;
-const MAX_TRIES = 85; // ~32s fast + ~110s slow ≈ 2 min total window
+// Poll fast so we flip to "confirmed" the instant the capture lands, then give a
+// definite answer quickly: the return route already waited a few seconds, so a
+// real payment is almost always settled by now. We poll ~30s total and, if it's
+// still not confirmed, show a clear "rejected" screen (never an endless spinner).
+// The webhook remains the safety net — if a rare slow capture lands afterwards it
+// still credits the wallet automatically.
+const FAST_MS = 700;
+const FAST_TRIES = 25; // ~17s of rapid polling
+const SLOW_MS = 1500;
+const MAX_TRIES = 45; // ~17s fast + ~30s slow ≈ 45s total window
 const nextDelay = (tries: number) => (tries < FAST_TRIES ? FAST_MS : SLOW_MS);
 
 export function PaymentResult({ paymentId }: { paymentId: string }) {
@@ -85,13 +87,9 @@ export function PaymentResult({ paymentId }: { paymentId: string }) {
             <span className="flex h-20 w-20 items-center justify-center rounded-full bg-success/15 text-success">
               <svg className="h-11 w-11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m20 6-11 11-5-5" /></svg>
             </span>
-          ) : isFailed ? (
+          ) : isFailed || isTimeout ? (
             <span className="flex h-20 w-20 items-center justify-center rounded-full bg-danger/15 text-danger">
               <svg className="h-11 w-11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
-            </span>
-          ) : isTimeout ? (
-            <span className="flex h-20 w-20 items-center justify-center rounded-full bg-warning/15 text-warning">
-              <svg className="h-11 w-11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
             </span>
           ) : (
             <span className="flex h-20 w-20 items-center justify-center rounded-full bg-brand/10 text-brand">
