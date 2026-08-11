@@ -114,8 +114,8 @@ export function CreateOrderPOS() {
   const [deliveryDate, setDeliveryDate] = useState("");
   const [timeSlot, setTimeSlot] = useState("");
   const [fast, setFast] = useState(false);
-  const [pickup, setPickup] = useState(false);
-  const [delivery, setDelivery] = useState(false);
+  // How the finished order reaches the customer — exactly one, required.
+  const [fulfillment, setFulfillment] = useState<"delivery" | "self_pickup" | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -169,8 +169,24 @@ export function CreateOrderPOS() {
   async function submit() {
     setError(null);
     if (cart.length === 0) return setError(t.pos.noItems);
-    const hasCustomer = selectedCust || (custMode === "new" && newName.trim() && newPhone.trim());
-    if (!hasCustomer) return setError(t.pos.needCustomer);
+    if (!fulfillment) return setError(t.pos.needFulfillment);
+
+    // Resolve the customer. In "search" mode, a typed phone number is enough —
+    // even if the staff didn't tap a suggestion, we pass it through and the
+    // server finds the existing customer (or creates them). This is why an
+    // "existing customer" that isn't tapped in the dropdown still works.
+    const searchDigits = custQuery.replace(/\D/g, "");
+    let customerId: string | undefined;
+    let newCustomer: { name: string; phone: string } | undefined;
+    if (selectedCust) {
+      customerId = selectedCust.id;
+    } else if (custMode === "new" && newPhone.trim()) {
+      newCustomer = { name: newName.trim(), phone: newPhone.trim() };
+    } else if (custMode === "search" && searchDigits.length >= 8) {
+      newCustomer = { name: "", phone: custQuery.trim() };
+    } else {
+      return setError(t.pos.needCustomer);
+    }
 
     const orderItems: ItemInput[] = cart.map((l) => ({
       garment: l.name,
@@ -181,16 +197,16 @@ export function CreateOrderPOS() {
 
     const noteParts: string[] = [];
     if (fast) noteParts.push(t.pos.fast);
-    if (pickup) noteParts.push(t.pos.pickup);
-    if (delivery) noteParts.push(t.pos.delivery);
+    noteParts.push(fulfillment === "self_pickup" ? t.pos.selfPickup : t.pos.delivery);
     if (timeSlot) noteParts.push(`${t.pos.readyBy}: ${timeSlot}`);
 
     setBusy(true);
     const res = await createWalkInOrder({
-      customerId: selectedCust?.id,
-      newCustomer: selectedCust ? undefined : { name: newName.trim(), phone: newPhone.trim() },
+      customerId,
+      newCustomer,
       items: orderItems,
       deliveryDate: deliveryDate || null,
+      fulfillment,
       note: noteParts.join(" • ") || undefined,
     });
     setBusy(false);
@@ -391,14 +407,36 @@ export function CreateOrderPOS() {
               </span>
               <Toggle on={fast} onChange={setFast} />
             </label>
-            <label className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-muted-foreground">{t.pos.pickup}</span>
-              <Toggle on={pickup} onChange={setPickup} />
-            </label>
-            <label className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-muted-foreground">{t.pos.delivery}</span>
-              <Toggle on={delivery} onChange={setDelivery} />
-            </label>
+            {/* Handover method — exactly one, required. Either the customer
+                collects it themselves, or one of our drivers delivers it. */}
+            <div>
+              <p className="mb-1.5 text-xs font-semibold text-muted-foreground">{t.pos.handover}</p>
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  { key: "self_pickup" as const, label: t.pos.selfPickup, hint: t.pos.selfPickupHint },
+                  { key: "delivery" as const, label: t.pos.delivery, hint: t.pos.deliveryHint },
+                ]).map((o) => {
+                  const on = fulfillment === o.key;
+                  return (
+                    <button
+                      key={o.key}
+                      type="button"
+                      onClick={() => setFulfillment(o.key)}
+                      className={`rounded-xl border p-3 text-start transition-colors ${
+                        on ? "border-brand bg-brand-soft" : "border-border"
+                      }`}
+                    >
+                      <span className={`block text-sm font-bold ${on ? "text-brand" : "text-foreground"}`}>
+                        {o.label}
+                      </span>
+                      <span className="mt-0.5 block text-[11px] leading-tight text-muted-foreground">
+                        {o.hint}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
             <div>
               <p className="mb-1.5 text-xs font-semibold text-muted-foreground">{t.pos.readyBy}</p>

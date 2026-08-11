@@ -67,6 +67,7 @@ export async function createWalkInOrder(input: {
   newCustomer?: { name: string; phone: string };
   items: ItemInput[];
   deliveryDate?: string | null;
+  fulfillment?: "delivery" | "self_pickup";
   note?: string;
 }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   if (!(await getStaffProfile())) return { ok: false, error: "forbidden" };
@@ -93,6 +94,7 @@ export async function createWalkInOrder(input: {
       piece_count: pieces,
       price_fils: total,
       delivery_date: input.deliveryDate ?? null,
+      fulfillment: input.fulfillment === "self_pickup" ? "self_pickup" : "delivery",
       staff_note: input.note?.trim() || null,
     })
     .select("id, order_no")

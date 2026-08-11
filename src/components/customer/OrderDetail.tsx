@@ -41,7 +41,7 @@ export function OrderDetail({
         </Link>
         <h1 className="text-xl font-extrabold tabular-nums">{order.order_no}</h1>
         <div className="ms-auto">
-          <OrderStatusBadge status={order.status} />
+          <OrderStatusBadge status={order.status} fulfillment={order.fulfillment} />
         </div>
       </div>
 
@@ -100,7 +100,7 @@ export function OrderDetail({
       )}
 
       {/* Full stage-by-stage progress — same stages the shop works through */}
-      <OrderProgress status={order.status} events={events} />
+      <OrderProgress status={order.status} events={events} fulfillment={order.fulfillment} />
     </div>
   );
 }

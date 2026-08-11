@@ -37,7 +37,7 @@ export function HomeView({
           {activeOrder ? (
             <div className="mt-1 flex items-center gap-2">
               <span className="truncate text-sm font-bold">{activeOrder.order_no}</span>
-              <OrderStatusBadge status={activeOrder.status} />
+              <OrderStatusBadge status={activeOrder.status} fulfillment={activeOrder.fulfillment} />
             </div>
           ) : (
             <p className="mt-0.5 text-sm font-bold">{t.home.noRequest}</p>

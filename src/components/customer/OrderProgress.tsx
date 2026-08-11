@@ -1,6 +1,7 @@
 "use client";
 
 import { useLang } from "@/lib/i18n/LanguageProvider";
+import { statusLabel } from "@/lib/orderStatus";
 import type { OrderStatus, Tables } from "@/types/database";
 
 // The exact stages the shop works through, in order. The customer sees the same
@@ -17,12 +18,17 @@ const STAGES: OrderStatus[] = [
   "delivered",
 ];
 
+// Self-pickup orders never go through a delivery stage.
+const SELF_PICKUP_STAGES: OrderStatus[] = STAGES.filter((s) => s !== "delivering");
+
 export function OrderProgress({
   status,
   events,
+  fulfillment,
 }: {
   status: OrderStatus;
   events: Tables<"order_events">[];
+  fulfillment?: string | null;
 }) {
   const { t, lang } = useLang();
   const locale = lang === "ar" ? "ar-KW" : "en-GB";
@@ -58,15 +64,16 @@ export function OrderProgress({
     );
   }
 
-  const currentIndex = STAGES.indexOf(status);
+  const stages = fulfillment === "self_pickup" ? SELF_PICKUP_STAGES : STAGES;
+  const currentIndex = stages.indexOf(status);
 
   return (
     <div className="rounded-2xl bg-card p-4 shadow-sm">
       <h2 className="mb-4 font-bold">{t.orders.timeline}</h2>
       <ol className="space-y-0">
-        {STAGES.map((stage, i) => {
+        {stages.map((stage, i) => {
           const state = i < currentIndex ? "done" : i === currentIndex ? "current" : "upcoming";
-          const isLast = i === STAGES.length - 1;
+          const isLast = i === stages.length - 1;
           const at = times[stage];
           return (
             <li key={stage} className="flex gap-3">
@@ -102,7 +109,7 @@ export function OrderProgress({
                       : "font-semibold"
                   }
                 >
-                  {t.status[stage]}
+                  {statusLabel(t.status, stage, fulfillment)}
                 </p>
                 {at ? (
                   <p className="text-xs text-muted-foreground">{fmtTime(at)}</p>

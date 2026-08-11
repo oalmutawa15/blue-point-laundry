@@ -1,6 +1,7 @@
 "use client";
 
 import { useLang } from "@/lib/i18n/LanguageProvider";
+import { statusLabel } from "@/lib/orderStatus";
 import type { OrderStatus } from "@/types/database";
 
 const STYLES: Record<OrderStatus, string> = {
@@ -16,13 +17,19 @@ const STYLES: Record<OrderStatus, string> = {
   cancelled: "bg-rose-100 text-rose-800",
 };
 
-export function OrderStatusBadge({ status }: { status: OrderStatus }) {
+export function OrderStatusBadge({
+  status,
+  fulfillment,
+}: {
+  status: OrderStatus;
+  fulfillment?: string | null;
+}) {
   const { t } = useLang();
   return (
     <span
       className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold ${STYLES[status]}`}
     >
-      {t.status[status]}
+      {statusLabel(t.status, status, fulfillment)}
     </span>
   );
 }

@@ -41,7 +41,7 @@ export function ShopOrderDetail({
         </Link>
         <h1 className="text-xl font-extrabold tabular-nums">{order.order_no}</h1>
         <div className="ms-auto">
-          <OrderStatusBadge status={order.status} />
+          <OrderStatusBadge status={order.status} fulfillment={order.fulfillment} />
         </div>
       </div>
 

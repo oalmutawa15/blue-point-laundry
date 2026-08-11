@@ -18,6 +18,7 @@ import {
   markReceived,
   confirmPayment,
   markReady,
+  markPickedUp,
   cancelOrder,
   type ItemInput,
 } from "@/app/actions/shop";
@@ -434,6 +435,16 @@ export function ShopOrderActions({
       case "washing":
         return primaryBtn(t.shop.markReadyBtn, () => markReady(order.id));
       case "ready":
+        // Self-pickup orders have no delivery-driver step: the customer collects
+        // from the shop, and the shop marks it handed over.
+        if (order.fulfillment === "self_pickup") {
+          return (
+            <div className="space-y-2">
+              {info(t.shop.readyForPickupInfo)}
+              {primaryBtn(t.shop.markPickedUp, () => markPickedUp(order.id))}
+            </div>
+          );
+        }
         return (
           <div className="space-y-2">
             <DriverPicker

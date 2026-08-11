@@ -129,9 +129,16 @@ export async function confirmPayment(orderId: string): Promise<Ok> {
   return res;
 }
 
-// washing -> ready: clothes are clean and ready for delivery.
+// washing -> ready: clothes are clean and ready for delivery / pickup.
 export async function markReady(orderId: string): Promise<Ok> {
   return setStatus(orderId, "ready");
+}
+
+// ready -> delivered (self-pickup only): the customer collected the order at the
+// shop. No delivery driver is involved. The debt gate at "ready" already ensured
+// the wallet isn't negative before the order could reach this point.
+export async function markPickedUp(orderId: string): Promise<Ok> {
+  return setStatus(orderId, "delivered");
 }
 
 // ready -> delivering: assign a delivery driver and dispatch.

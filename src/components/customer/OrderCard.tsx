@@ -16,7 +16,7 @@ export function OrderCard({ order }: { order: Tables<"orders"> }) {
     >
       <div className="flex items-center justify-between">
         <span className="font-extrabold tabular-nums">{order.order_no}</span>
-        <OrderStatusBadge status={order.status} />
+        <OrderStatusBadge status={order.status} fulfillment={order.fulfillment} />
       </div>
       <div className="mt-2 flex items-center justify-between text-sm text-muted-foreground">
         <span>{new Date(order.created_at).toLocaleDateString(locale)}</span>
