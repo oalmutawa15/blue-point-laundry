@@ -306,7 +306,7 @@ export function CreateOrderPOS() {
       </div>
 
       {/* Cart */}
-      <div className="space-y-3 lg:sticky lg:top-4 lg:self-start">
+      <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-extrabold">{t.pos.cart}</h2>
           {cart.length > 0 && (
@@ -497,13 +497,17 @@ export function CreateOrderPOS() {
 
         {error && <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm font-semibold text-danger">{error}</p>}
 
-        <button
-          onClick={submit}
-          disabled={busy || cart.length === 0}
-          className="w-full rounded-xl bg-brand px-4 py-3.5 text-base font-bold text-brand-foreground disabled:opacity-50"
-        >
-          {busy ? t.common.saving : t.pos.createOrder}
-        </button>
+        {/* Create-order bar: stays pinned to the bottom of the screen so it is
+            always visible, however many items are in the cart. */}
+        <div className="sticky bottom-0 z-10 -mx-1 border-t border-border bg-background/95 px-1 pb-3 pt-3 backdrop-blur">
+          <button
+            onClick={submit}
+            disabled={busy || cart.length === 0}
+            className="w-full rounded-xl bg-brand px-4 py-3.5 text-base font-bold text-brand-foreground shadow-lg disabled:opacity-50"
+          >
+            {busy ? t.common.saving : `${t.pos.createOrder}${cart.length > 0 ? ` · ${formatMoney(total, lang)}` : ""}`}
+          </button>
+        </div>
       </div>
 
       {pickingItem && (
