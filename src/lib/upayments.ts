@@ -170,10 +170,16 @@ export async function finalizeUpayments(
   }
 
   if (state === "paid") {
-    await admin
+    // Atomically claim the payment: only the finalize that flips it from pending
+    // proceeds to credit + notify. Prevents a poll + webhook race from crediting
+    // or messaging twice.
+    const { data: claimed } = await admin
       .from("payments")
       .update({ status: "paid", paid_at: new Date().toISOString() })
-      .eq("id", paymentId);
+      .eq("id", paymentId)
+      .eq("status", "pending")
+      .select("id");
+    if (!claimed || claimed.length === 0) return "already";
 
     if (payment.order_id) {
       // Per-order payment link → mark the ORDER as paid (settled online). This is
@@ -198,12 +204,20 @@ export async function finalizeUpayments(
       }
     } else {
       // Wallet top-up → credit the wallet (idempotent by reference).
+      const credited = payment.credit_fils ?? payment.amount_fils;
       await admin.rpc("wallet_topup", {
         p_customer: payment.customer_id,
-        p_amount: payment.credit_fils ?? payment.amount_fils,
+        p_amount: credited,
         p_reference: payment.id,
         p_note: "UPayments top-up",
       });
+      // Confirm to the customer that their wallet was funded. Guarded by the
+      // top-level `status === "paid"` early-return above, so it fires exactly
+      // once per payment even if poll + webhook both finalize.
+      try {
+        const { notifyTopUpConfirmed } = await import("@/lib/notify");
+        await notifyTopUpConfirmed(payment.customer_id, credited);
+      } catch {}
     }
     return "paid";
   }

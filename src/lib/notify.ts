@@ -325,6 +325,38 @@ export async function notifyOrderPaymentFailed(
   });
 }
 
+// Wallet top-up captured → confirm to the customer that their balance was funded.
+// Fires the moment the payment is verified as captured, regardless of whether the
+// customer is still on the result page — so a slow capture still gets a definite
+// confirmation.
+export async function notifyTopUpConfirmed(customerId: string, creditFils: number) {
+  const admin = createAdminClient();
+  const { data: c } = await admin
+    .from("profiles")
+    .select("phone, preferences, credit_fils")
+    .eq("id", customerId)
+    .single();
+  const prefs = c?.preferences;
+  const lang =
+    prefs && typeof prefs === "object" && !Array.isArray(prefs) &&
+    (prefs as Record<string, unknown>).lang === "en"
+      ? "en"
+      : "ar";
+  const added = filsToKwd(creditFils);
+  const balance = filsToKwd(c?.credit_fils ?? 0);
+  const message =
+    lang === "en"
+      ? `✅ Payment confirmed. ${added} KWD has been added to your Blue Point wallet.\n💰 New balance: ${balance} KWD.`
+      : `✅ تم تأكيد الدفع. تمت إضافة ${added} د.ك إلى محفظتك في بلو بوينت.\n💰 رصيدك الجديد: ${balance} د.ك.`;
+  await record(admin, {
+    orderId: null,
+    recipientId: customerId,
+    recipientPhone: c?.phone ?? null,
+    template: "topup_confirmed",
+    message,
+  });
+}
+
 // A scheduled pickup couldn't be placed because the wallet balance is 0 → nudge
 // the customer to top up so future scheduled pickups go through.
 export async function notifyScheduledPickupSkipped(
