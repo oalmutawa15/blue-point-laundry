@@ -236,6 +236,45 @@ export async function notifyReadyForDelivery(
   });
 }
 
+// Daily late-orders alert → notify shop + admin staff with a summary of every
+// order still pending past its dispatch day. Sent by the scheduled job.
+export async function notifyLateOrders(
+  orders: { id: string; order_no: string }[],
+): Promise<{ notified: number }> {
+  if (!orders.length) return { notified: 0 };
+  const admin = createAdminClient();
+  const { data: staff } = await admin
+    .from("profiles")
+    .select("id, phone")
+    .in("role", ["shop", "admin"]);
+  const list = orders.map((o) => o.order_no).join("، ");
+  const message = `⚠️ لديك ${orders.length} طلب متأخر لم يُنجزها المندوب في وقتها:\n${list}\nيرجى المتابعة مع المندوبين.`;
+  let notified = 0;
+  for (const s of staff ?? []) {
+    let status = "queued";
+    try {
+      if (whatsappConfigured() && s.phone) {
+        const res = await sendWhatsApp(s.phone, message);
+        status = res.ok ? "sent" : "failed";
+        if (!res.ok) console.warn(`[WhatsApp late] → ${s.phone}: ${res.error}`);
+      }
+      await admin.from("notifications").insert({
+        order_id: orders[0].id,
+        recipient_id: s.id,
+        recipient_phone: s.phone,
+        template: "late_orders",
+        message,
+        channel: "whatsapp",
+        status,
+      });
+      if (status === "sent") notified++;
+    } catch (e) {
+      console.warn(`[notify late] error: ${(e as Error).message}`);
+    }
+  }
+  return { notified };
+}
+
 // Delivered → notify the customer.
 export async function notifyDelivered(
   orderId: string,
