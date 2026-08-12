@@ -501,11 +501,13 @@ function DispatchControl({ order }: { order: Tables<"orders"> }) {
   const hasDriverLeg = order.status === "pickup_requested" || order.status === "delivering";
   if (!hasDriverLeg) return null;
 
-  const yesterday = (() => {
+  const shift = (days: number) => {
     const d = new Date(`${kuwaitToday()}T00:00:00Z`);
-    d.setUTCDate(d.getUTCDate() - 1);
+    d.setUTCDate(d.getUTCDate() + days);
     return d.toISOString().slice(0, 10);
-  })();
+  };
+  const tomorrow = shift(1);
+  const yesterday = shift(-1);
 
   async function save(d: string) {
     setBusy(true);
@@ -536,6 +538,14 @@ function DispatchControl({ order }: { order: Tables<"orders"> }) {
         </button>
       </div>
       <div className="mt-2 flex gap-2">
+        <button
+          type="button"
+          onClick={() => save(tomorrow)}
+          disabled={busy}
+          className="flex-1 rounded-lg bg-brand-soft px-3 py-2 text-xs font-bold text-brand disabled:opacity-50"
+        >
+          {t.shop.showTomorrow}
+        </button>
         <button
           type="button"
           onClick={() => save(kuwaitToday())}
