@@ -12,6 +12,7 @@ import {
   type PriceService,
 } from "@/lib/priceList";
 import { findCustomerByPhone, createWalkInOrder, type CustomerHit } from "@/app/actions/walkin";
+import { PREF_GROUPS, prefLabel, biGroup, type Preferences } from "@/lib/preferences";
 import type { ItemInput } from "@/app/actions/shop";
 
 const SERVICES: PriceService[] = ["wash", "dryclean", "iron"];
@@ -344,12 +345,31 @@ export function CreateOrderPOS() {
             className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-brand"
           />
 
-          {/* Known customer → show their name */}
+          {/* Known customer → show their name + saved preferences */}
           {checked && matched && (
-            <p className="flex items-center gap-1.5 text-sm font-semibold text-success">
-              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m20 6-11 11-5-5" /></svg>
-              {matched.full_name || matched.phone}
-            </p>
+            <>
+              <p className="flex items-center gap-1.5 text-sm font-semibold text-success">
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m20 6-11 11-5-5" /></svg>
+                {matched.full_name || matched.phone}
+              </p>
+              {(() => {
+                const prefs = (matched.preferences ?? {}) as Preferences;
+                const rows = PREF_GROUPS.map((g) => ({ label: biGroup(g), value: prefLabel(g.key, prefs[g.key]) })).filter((r) => r.value);
+                if (rows.length === 0 && !prefs.notes?.trim()) return null;
+                return (
+                  <div className="mt-1 space-y-1 rounded-lg bg-muted px-3 py-2 text-xs">
+                    <p className="font-bold text-brand">{t.preferences.title}</p>
+                    {rows.map((r) => (
+                      <div key={r.label} className="flex items-center justify-between gap-2">
+                        <span className="text-muted-foreground">{r.label}</span>
+                        <span className="font-semibold">{r.value}</span>
+                      </div>
+                    ))}
+                    {prefs.notes?.trim() && <p className="pt-1">{prefs.notes}</p>}
+                  </div>
+                );
+              })()}
+            </>
           )}
 
           {/* Unknown number → require a name */}

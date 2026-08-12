@@ -8,7 +8,14 @@ import { normalizeKwPhone } from "@/lib/phone";
 import { sendReceiptFor } from "@/lib/receipt";
 import type { ItemInput } from "./shop";
 
-export type CustomerHit = { id: string; full_name: string | null; phone: string };
+import type { Json } from "@/types/database";
+
+export type CustomerHit = {
+  id: string;
+  full_name: string | null;
+  phone: string;
+  preferences?: Json;
+};
 
 // Search existing customers by name or phone (for the walk-in order builder).
 // Staff only — this reads across all customers via the service-role client.
@@ -35,7 +42,7 @@ export async function findCustomerByPhone(phone: string): Promise<CustomerHit | 
   const admin = createAdminClient();
   const { data } = await admin
     .from("profiles")
-    .select("id, full_name, phone")
+    .select("id, full_name, phone, preferences")
     .eq("phone", norm.e164)
     .eq("role", "customer")
     .maybeSingle();
