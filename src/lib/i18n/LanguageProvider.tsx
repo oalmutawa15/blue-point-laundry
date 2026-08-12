@@ -38,12 +38,15 @@ export function LanguageProvider({
     if (saved === "ar" || saved === "en") setLangState(saved);
   }, []);
 
-  // Keep <html lang/dir> in sync with the active language.
+  // Keep <html lang/dir> in sync, and persist in BOTH localStorage and a cookie.
+  // The cookie lets the server render the right language on first paint, so there
+  // is no flash of Arabic before switching.
   useEffect(() => {
     const el = document.documentElement;
     el.lang = lang;
     el.dir = dir(lang);
     window.localStorage.setItem(STORAGE_KEY, lang);
+    document.cookie = `${STORAGE_KEY}=${lang};path=/;max-age=31536000;samesite=lax`;
   }, [lang]);
 
   // Persist the choice on the user's profile (for logged-in users) so

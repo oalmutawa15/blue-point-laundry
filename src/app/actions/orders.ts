@@ -1,5 +1,6 @@
 "use server";
 
+import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { notifyNewOrder } from "@/lib/notify";
@@ -39,8 +40,12 @@ export async function createPickupRequest(
 
   if (error) return { ok: false, error: error.message };
 
-  // Alert shop staff on WhatsApp (mock for now).
-  await notifyNewOrder(data.id, data.order_no);
+  // Alert shop staff on WhatsApp in the background so the button returns fast.
+  after(async () => {
+    try {
+      await notifyNewOrder(data.id, data.order_no);
+    } catch {}
+  });
 
   revalidatePath("/home");
   revalidatePath("/orders");
