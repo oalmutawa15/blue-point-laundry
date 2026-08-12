@@ -1,9 +1,11 @@
 "use server";
 
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { emailForPhone, passwordForPhone, getStaffProfile } from "@/lib/auth";
 import { normalizeKwPhone } from "@/lib/phone";
+import { sendReceiptFor } from "@/lib/receipt";
 import type { ItemInput } from "./shop";
 
 export type CustomerHit = { id: string; full_name: string | null; phone: string };
@@ -127,6 +129,14 @@ export async function createWalkInOrder(input: {
     })),
   );
   if (itemsErr) return { ok: false, error: itemsErr.message };
+
+  // The receipt is "published" the moment a walk-in order is created → send the
+  // customer their receipt link over WhatsApp (in the background).
+  after(async () => {
+    try {
+      await sendReceiptFor(order.id);
+    } catch {}
+  });
 
   revalidatePath("/shop");
   return { ok: true, id: order.id };

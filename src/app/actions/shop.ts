@@ -5,7 +5,12 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStaffProfile } from "@/lib/auth";
-import { notifyPickupAssigned, notifyReadyForDelivery, notifyReadyForPickup } from "@/lib/notify";
+import {
+  notifyPickupAssigned,
+  notifyReadyForDelivery,
+  notifyReadyForPickup,
+  notifyCollected,
+} from "@/lib/notify";
 import { sendReceiptFor } from "@/lib/receipt";
 import { nextDispatchDate } from "@/lib/dispatch";
 import type { Database } from "@/types/database";
@@ -190,9 +195,23 @@ export async function setDispatchDate(orderId: string, date: string): Promise<Ok
 
 // ready -> delivered (self-pickup only): the customer collected the order at the
 // shop. No delivery driver is involved. The debt gate at "ready" already ensured
-// the wallet isn't negative before the order could reach this point.
+// the wallet isn't negative before the order could reach this point. Confirm to
+// the customer that their order has been picked up.
 export async function markPickedUp(orderId: string): Promise<Ok> {
-  return setStatus(orderId, "delivered");
+  const res = await setStatus(orderId, "delivered");
+  if (!res.ok) return res;
+  after(async () => {
+    try {
+      const admin = createAdminClient();
+      const { data: o } = await admin
+        .from("orders")
+        .select("order_no, customer_id")
+        .eq("id", orderId)
+        .single();
+      if (o) await notifyCollected(orderId, o.order_no, o.customer_id);
+    } catch {}
+  });
+  return res;
 }
 
 // ready -> delivering: assign a delivery driver and dispatch.
