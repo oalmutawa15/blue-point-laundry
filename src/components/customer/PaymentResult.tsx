@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useLang } from "@/lib/i18n/LanguageProvider";
 import { formatMoney } from "@/lib/money";
+import { createClient } from "@/lib/supabase/client";
 
 type ApiStatus = "pending" | "paid" | "failed";
 // "confirming" = still polling; "timeout" = we stopped polling without a final answer.
@@ -64,6 +65,31 @@ export function PaymentResult({ paymentId }: { paymentId: string }) {
     poll();
     return () => {
       active = false;
+    };
+  }, [paymentId]);
+
+  // Live confirmation: the webhook (or any server path) settles the payment by
+  // updating this payments row. Subscribe to it so the page flips to confirmed
+  // the instant that happens — even long after the polling window ends, with no
+  // refresh. RLS scopes this to the customer's own payment.
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`payment-${paymentId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "payments", filter: `id=eq.${paymentId}` },
+        (payload) => {
+          const row = payload.new as { status?: string; credit_fils?: number | null; amount_fils?: number | null };
+          if (typeof row.credit_fils === "number") setAmount(row.credit_fils);
+          else if (typeof row.amount_fils === "number") setAmount(row.amount_fils);
+          if (row.status === "paid") setStatus("paid");
+          else if (row.status === "failed") setStatus("failed");
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
     };
   }, [paymentId]);
 

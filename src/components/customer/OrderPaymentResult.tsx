@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useLang } from "@/lib/i18n/LanguageProvider";
 import { formatMoney } from "@/lib/money";
+import { createClient } from "@/lib/supabase/client";
 
 type ApiStatus = "pending" | "paid" | "failed";
 type Status = "confirming" | "paid" | "failed" | "timeout";
@@ -60,6 +61,29 @@ export function OrderPaymentResult({
     poll();
     return () => {
       active = false;
+    };
+  }, [paymentId]);
+
+  // Live confirmation from the webhook: flip to confirmed the instant the payment
+  // row is settled, even after polling stops (works when the customer is signed
+  // in; RLS scopes it to their own payment).
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`order-payment-${paymentId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "payments", filter: `id=eq.${paymentId}` },
+        (payload) => {
+          const row = payload.new as { status?: string; amount_fils?: number | null };
+          if (typeof row.amount_fils === "number") setAmount(row.amount_fils);
+          if (row.status === "paid") setStatus("paid");
+          else if (row.status === "failed") setStatus("failed");
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
     };
   }, [paymentId]);
 
