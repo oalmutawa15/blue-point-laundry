@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useLang } from "@/lib/i18n/LanguageProvider";
 import { formatMoney } from "@/lib/money";
 import { OrderStatusBadge } from "@/components/customer/OrderStatusBadge";
+import { PREF_GROUPS, prefLabel, biGroup, type Preferences } from "@/lib/preferences";
 import type { OrderStatus } from "@/types/database";
 
 export type ReceiptItem = {
@@ -21,12 +22,19 @@ export type ReceiptData = {
   pieceCount: number | null;
   priceFils: number | null;
   items: ReceiptItem[];
+  preferences?: Preferences;
 };
 
 export function PublicReceipt({ data }: { data: ReceiptData }) {
   const { t, lang } = useLang();
   const date = new Date(data.createdAt).toLocaleDateString(lang === "ar" ? "ar-KW" : "en-GB");
   const total = data.priceFils ?? data.items.reduce((s, i) => s + i.qty * i.unit_price_fils, 0);
+
+  const prefs = data.preferences ?? {};
+  const prefRows = PREF_GROUPS.map((g) => ({ label: biGroup(g), value: prefLabel(g.key, prefs[g.key]) })).filter(
+    (r) => r.value,
+  );
+  const hasPrefs = prefRows.length > 0 || !!prefs.notes?.trim();
 
   return (
     <main className="min-h-screen bg-background px-4 py-8 print:bg-white">
@@ -70,6 +78,21 @@ export function PublicReceipt({ data }: { data: ReceiptData }) {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {hasPrefs && (
+          <div className="mt-4 space-y-1.5 border-t border-border pt-4 text-sm">
+            <p className="mb-1 font-bold text-brand">{t.preferences.title}</p>
+            {prefRows.map((r) => (
+              <div key={r.label} className="flex items-center justify-between gap-3">
+                <span className="text-muted-foreground">{r.label}</span>
+                <span className="font-semibold">{r.value}</span>
+              </div>
+            ))}
+            {prefs.notes?.trim() && (
+              <p className="mt-1 rounded-lg bg-muted px-3 py-2">{prefs.notes}</p>
+            )}
           </div>
         )}
 

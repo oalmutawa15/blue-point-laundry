@@ -7,7 +7,7 @@ import { useLang } from "@/lib/i18n/LanguageProvider";
 import { useRealtimeOrders } from "@/lib/useRealtimeOrders";
 import { formatAddress, mapsUrl } from "@/lib/address";
 import { markPickedUp } from "@/app/actions/driver";
-import { isLate } from "@/lib/lateness";
+import { isLate, kuwaitToday } from "@/lib/lateness";
 import type { OrderWithRelations } from "@/lib/orderTypes";
 
 function JobCard({ order, kind }: { order: OrderWithRelations; kind: "pickup" | "delivery" }) {
@@ -15,6 +15,8 @@ function JobCard({ order, kind }: { order: OrderWithRelations; kind: "pickup" | 
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const late = order.dispatch_late || isLate(order.dispatch_date, order.status);
+  const area = order.pickup_address?.area;
 
   async function pickUp() {
     setBusy(true);
@@ -28,11 +30,12 @@ function JobCard({ order, kind }: { order: OrderWithRelations; kind: "pickup" | 
     router.refresh();
   }
 
-  const late = order.dispatch_late || isLate(order.dispatch_date, order.status);
-
   return (
     <div className={`rounded-2xl bg-card p-4 shadow-sm ${late ? "ring-2 ring-danger" : ""}`}>
-      <div className="flex items-center justify-between">
+      {/* Area on top, bold — so the driver reads the destination first */}
+      {area && <p className="text-base font-extrabold text-brand">{area}</p>}
+
+      <div className="mt-1 flex items-center justify-between">
         <span className="flex items-center gap-2">
           <span className="font-extrabold tabular-nums">{order.order_no}</span>
           {late && (
@@ -45,6 +48,7 @@ function JobCard({ order, kind }: { order: OrderWithRelations; kind: "pickup" | 
           {kind === "pickup" ? t.driver.pickupFrom : t.driver.deliverTo}
         </span>
       </div>
+
       <p className="mt-2 text-sm font-semibold">
         {order.customer?.full_name || order.customer?.phone || "—"}
       </p>
@@ -88,6 +92,54 @@ function JobCard({ order, kind }: { order: OrderWithRelations; kind: "pickup" | 
   );
 }
 
+// Group orders so the same area is together (and roughly geographic), then list.
+function byArea(orders: OrderWithRelations[]): OrderWithRelations[] {
+  return [...orders].sort((a, b) => {
+    const aa = a.pickup_address;
+    const ba = b.pickup_address;
+    const areaCmp = (aa?.area ?? "").localeCompare(ba?.area ?? "");
+    if (areaCmp !== 0) return areaCmp;
+    // within the same area, order by coordinates when available
+    if (aa?.lat != null && ba?.lat != null && aa.lat !== ba.lat) return aa.lat - ba.lat;
+    if (aa?.lng != null && ba?.lng != null && aa.lng !== ba.lng) return aa.lng - ba.lng;
+    return 0;
+  });
+}
+
+function DaySection({
+  title,
+  pickups,
+  deliveries,
+}: {
+  title: string;
+  pickups: OrderWithRelations[];
+  deliveries: OrderWithRelations[];
+}) {
+  const { t } = useLang();
+  if (pickups.length === 0 && deliveries.length === 0) return null;
+  return (
+    <section className="space-y-3">
+      <h2 className="text-lg font-extrabold">{title}</h2>
+      {pickups.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-sm font-bold text-muted-foreground">{t.driver.pickups}</h3>
+          {byArea(pickups).map((o) => (
+            <JobCard key={o.id} order={o} kind="pickup" />
+          ))}
+        </div>
+      )}
+      {deliveries.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-sm font-bold text-muted-foreground">{t.driver.deliveries}</h3>
+          {byArea(deliveries).map((o) => (
+            <JobCard key={o.id} order={o} kind="delivery" />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function DriverJobList({
   pickups,
   deliveries,
@@ -97,10 +149,21 @@ export function DriverJobList({
 }) {
   const { t } = useLang();
   useRealtimeOrders("driver");
+
+  // "Tomorrow" = dispatch day is strictly after today; everything else (today,
+  // overdue, or legacy no-date) is "Today".
+  const today = kuwaitToday();
+  const isTomorrow = (o: OrderWithRelations) => !!o.dispatch_date && o.dispatch_date > today;
+
+  const todayPickups = pickups.filter((o) => !isTomorrow(o));
+  const tomorrowPickups = pickups.filter(isTomorrow);
+  const todayDeliveries = deliveries.filter((o) => !isTomorrow(o));
+  const tomorrowDeliveries = deliveries.filter(isTomorrow);
+
   const empty = pickups.length === 0 && deliveries.length === 0;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <h1 className="text-2xl font-extrabold">{t.driver.title}</h1>
 
       {empty && (
@@ -109,23 +172,8 @@ export function DriverJobList({
         </p>
       )}
 
-      {pickups.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="font-bold">{t.driver.pickups}</h2>
-          {pickups.map((o) => (
-            <JobCard key={o.id} order={o} kind="pickup" />
-          ))}
-        </section>
-      )}
-
-      {deliveries.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="font-bold">{t.driver.deliveries}</h2>
-          {deliveries.map((o) => (
-            <JobCard key={o.id} order={o} kind="delivery" />
-          ))}
-        </section>
-      )}
+      <DaySection title={t.driver.today} pickups={todayPickups} deliveries={todayDeliveries} />
+      <DaySection title={t.driver.tomorrow} pickups={tomorrowPickups} deliveries={tomorrowDeliveries} />
     </div>
   );
 }

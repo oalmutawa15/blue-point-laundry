@@ -25,7 +25,7 @@ export default async function ReceiptPage({
   const { data: order } = await admin
     .from("orders")
     .select(
-      "order_no, status, created_at, piece_count, price_fils, receipt_token, customer:customer_id(full_name), items:order_items(service, garment, qty, unit_price_fils)",
+      "order_no, status, created_at, piece_count, price_fils, receipt_token, customer:customer_id(full_name, preferences), items:order_items(service, garment, qty, unit_price_fils)",
     )
     .eq("id", id)
     .eq("receipt_token", token)
@@ -33,10 +33,8 @@ export default async function ReceiptPage({
 
   if (!order) return <ReceiptNotFound />;
 
-  const customerRel = order.customer as
-    | { full_name: string | null }
-    | { full_name: string | null }[]
-    | null;
+  type CustomerRel = { full_name: string | null; preferences: unknown };
+  const customerRel = order.customer as CustomerRel | CustomerRel[] | null;
   const customer = Array.isArray(customerRel) ? customerRel[0] : customerRel;
   const data: ReceiptData = {
     orderNo: order.order_no,
@@ -46,6 +44,7 @@ export default async function ReceiptPage({
     pieceCount: order.piece_count,
     priceFils: order.price_fils,
     items: (order.items ?? []) as ReceiptData["items"],
+    preferences: (customer?.preferences ?? {}) as ReceiptData["preferences"],
   };
 
   return (

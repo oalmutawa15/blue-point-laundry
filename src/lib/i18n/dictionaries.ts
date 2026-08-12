@@ -428,6 +428,8 @@ export const dictionaries = {
 
     driver: {
       title: "مهامي",
+      today: "اليوم",
+      tomorrow: "غداً",
       pickups: "طلبات الاستلام",
       deliveries: "طلبات التوصيل",
       noJobs: "لا توجد مهام حالياً",
@@ -988,6 +990,8 @@ export const dictionaries = {
 
     driver: {
       title: "My jobs",
+      today: "Today",
+      tomorrow: "Tomorrow",
       pickups: "Pickups",
       deliveries: "Deliveries",
       noJobs: "No jobs right now",

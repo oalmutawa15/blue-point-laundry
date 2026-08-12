@@ -14,12 +14,11 @@ export default async function DriverDashboard() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/");
 
-  // Next-day dispatch: a driver only sees orders whose dispatch day is today or
-  // earlier (Kuwait time). Orders assigned today (dispatch = tomorrow) stay
-  // hidden until 00:00; orders still pending from earlier days carry over.
-  // Legacy orders with no dispatch_date are shown immediately.
-  const today = kuwaitDate(0);
-  const visible = `dispatch_date.is.null,dispatch_date.lte.${today}`;
+  // Driver sees today's jobs plus a preview of tomorrow's batch (grouped
+  // separately in the UI). Anything further out stays hidden. Legacy orders
+  // with no dispatch_date are shown immediately.
+  const tomorrow = kuwaitDate(1);
+  const visible = `dispatch_date.is.null,dispatch_date.lte.${tomorrow}`;
 
   const [pickupsRes, deliveriesRes] = await Promise.all([
     supabase
