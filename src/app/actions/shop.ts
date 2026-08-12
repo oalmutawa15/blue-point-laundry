@@ -140,6 +140,22 @@ export async function markReady(orderId: string): Promise<Ok> {
   return setStatus(orderId, "ready");
 }
 
+// Override the dispatch day for an assigned order — lets the shop decide which
+// day the driver sees it (and makes the next-day flow testable: set it to today
+// to show it now, or to an earlier day to mark it late). Staff only.
+export async function setDispatchDate(orderId: string, date: string): Promise<Ok> {
+  if (!(await getStaffProfile())) return { ok: false, error: "forbidden" };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok: false, error: "bad_date" };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("orders")
+    .update({ dispatch_date: date })
+    .eq("id", orderId);
+  if (error) return { ok: false, error: error.message };
+  revalidate(orderId);
+  return { ok: true };
+}
+
 // ready -> delivered (self-pickup only): the customer collected the order at the
 // shop. No delivery driver is involved. The debt gate at "ready" already ensured
 // the wallet isn't negative before the order could reach this point.

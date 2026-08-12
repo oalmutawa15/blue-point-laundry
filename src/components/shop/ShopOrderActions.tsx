@@ -19,9 +19,11 @@ import {
   confirmPayment,
   markReady,
   markPickedUp,
+  setDispatchDate,
   cancelOrder,
   type ItemInput,
 } from "@/app/actions/shop";
+import { kuwaitToday } from "@/lib/lateness";
 import type { Tables } from "@/types/database";
 import type { DriverLite } from "@/lib/orderTypes";
 
@@ -466,6 +468,8 @@ export function ShopOrderActions({
     <div className="space-y-4">
       {statusAction}
 
+      <DispatchControl order={order} />
+
       {order.status === "cancelled" ? (
         <div className="rounded-2xl border border-border bg-card p-4 text-center shadow-sm">
           <p className="text-sm font-bold text-muted-foreground">{t.status.cancelled}</p>
@@ -479,6 +483,74 @@ export function ShopOrderActions({
       ) : (
         <CancelBox order={order} />
       )}
+    </div>
+  );
+}
+
+// Dispatch-day control: the shop can set which Kuwait day the assigned driver
+// sees this order. Shown once a driver leg is active (pickup_requested /
+// delivering). Quick "today" / "make late" buttons make the flow testable.
+function DispatchControl({ order }: { order: Tables<"orders"> }) {
+  const { t } = useLang();
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [date, setDate] = useState(order.dispatch_date ?? kuwaitToday());
+
+  const hasDriverLeg = order.status === "pickup_requested" || order.status === "delivering";
+  if (!hasDriverLeg && !order.dispatch_date) return null;
+
+  const yesterday = (() => {
+    const d = new Date(`${kuwaitToday()}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() - 1);
+    return d.toISOString().slice(0, 10);
+  })();
+
+  async function save(d: string) {
+    setBusy(true);
+    setDate(d);
+    await setDispatchDate(order.id, d);
+    setBusy(false);
+    router.refresh();
+  }
+
+  return (
+    <div className="rounded-2xl border border-dashed border-border bg-card p-4">
+      <p className="text-sm font-bold">{t.shop.dispatchTitle}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{t.shop.dispatchHint}</p>
+      <div className="mt-2 flex items-center gap-2">
+        <input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          className="flex-1 rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-brand"
+        />
+        <button
+          type="button"
+          onClick={() => save(date)}
+          disabled={busy}
+          className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-brand-foreground disabled:opacity-50"
+        >
+          {t.customers.save}
+        </button>
+      </div>
+      <div className="mt-2 flex gap-2">
+        <button
+          type="button"
+          onClick={() => save(kuwaitToday())}
+          disabled={busy}
+          className="flex-1 rounded-lg border border-border px-3 py-2 text-xs font-bold text-brand disabled:opacity-50"
+        >
+          {t.shop.showToday}
+        </button>
+        <button
+          type="button"
+          onClick={() => save(yesterday)}
+          disabled={busy}
+          className="flex-1 rounded-lg border border-danger/40 px-3 py-2 text-xs font-bold text-danger disabled:opacity-50"
+        >
+          {t.shop.makeLate}
+        </button>
+      </div>
     </div>
   );
 }
