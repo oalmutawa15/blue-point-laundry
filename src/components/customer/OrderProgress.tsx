@@ -11,7 +11,6 @@ const STAGES: OrderStatus[] = [
   "pickup_requested",
   "picked_up",
   "counting",
-  "awaiting_payment",
   "washing",
   "ready",
   "delivering",

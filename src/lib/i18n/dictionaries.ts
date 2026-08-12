@@ -352,7 +352,7 @@ export const dictionaries = {
 
     status: {
       new: "طلب جديد",
-      pickup_requested: "تم طلب الاستلام",
+      pickup_requested: "بانتظار وصول المندوب",
       picked_up: "تم استلام الملابس",
       counting: "بانتظار العدّ",
       awaiting_payment: "بانتظار الدفع",
@@ -909,7 +909,7 @@ export const dictionaries = {
 
     status: {
       new: "New order",
-      pickup_requested: "Pickup requested",
+      pickup_requested: "Awaiting the driver",
       picked_up: "Picked up",
       counting: "Pending counting",
       awaiting_payment: "Pending payment",
