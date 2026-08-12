@@ -163,6 +163,7 @@ export async function notifyReceipt(
   orderNo: string,
   customerId: string | null,
   url: string,
+  includeBalance = true,
 ) {
   if (!customerId) return { ok: false as const, error: "no_customer" };
   const admin = createAdminClient();
@@ -181,10 +182,16 @@ export async function notifyReceipt(
   const link = `${url}${url.includes("?") ? "&" : "?"}lang=${lang}`;
   const balanceFils = c?.credit_fils ?? 0;
   const balance = filsToKwd(balanceFils);
+  // The wallet-balance line is only shown for app orders (not walk-ins).
+  const balanceLine = includeBalance
+    ? lang === "en"
+      ? `\n\n💰 Wallet balance: ${balance} KWD`
+      : `\n\n💰 رصيد محفظتك: ${balance} د.ك`
+    : "";
   const message =
     lang === "en"
-      ? `🧼 We've started washing your order ${orderNo} at Blue Point Laundry.\nView or download your receipt here:\n${link}\n\n💰 Wallet balance: ${balance} KWD`
-      : `🧼 بدأنا غسيل طلبك ${orderNo} في بلو بوينت.\nهذه فاتورة طلبك — يمكنك عرضها وتحميلها من هنا:\n${link}\n\n💰 رصيد محفظتك: ${balance} د.ك`;
+      ? `🧼 We've started washing your order ${orderNo} at Blue Point Laundry.\nView or download your receipt here:\n${link}${balanceLine}`
+      : `🧼 بدأنا غسيل طلبك ${orderNo} في بلو بوينت.\nهذه فاتورة طلبك — يمكنك عرضها وتحميلها من هنا:\n${link}${balanceLine}`;
   await record(admin, {
     orderId,
     recipientId: customerId,
@@ -194,7 +201,8 @@ export async function notifyReceipt(
   });
 
   // Low balance (< 5 KWD) → a follow-up nudge with a link to top up the wallet.
-  if (balanceFils < 5000) {
+  // App orders only — walk-ins are paid at the counter.
+  if (includeBalance && balanceFils < 5000) {
     const origin = (() => {
       try {
         return new URL(url).origin;

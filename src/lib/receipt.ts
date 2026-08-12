@@ -18,14 +18,17 @@ export async function sendReceiptFor(
   const admin = createAdminClient();
   const { data: order } = await admin
     .from("orders")
-    .select("id, order_no, customer_id, receipt_token")
+    .select("id, order_no, customer_id, receipt_token, payment_method")
     .eq("id", orderId)
     .single();
   if (!order) return { ok: false, error: "not_found" };
 
   const origin = await siteOrigin();
   const url = `${origin}/receipt/${order.id}?t=${order.receipt_token}`;
-  const res = await notifyReceipt(order.id, order.order_no, order.customer_id, url);
+  // Wallet balance + low-balance nudge only for app orders (pickup/delivery).
+  // Walk-in orders carry a payment_method and are paid at the counter.
+  const includeBalance = !order.payment_method;
+  const res = await notifyReceipt(order.id, order.order_no, order.customer_id, url, includeBalance);
   if (!res.ok) return { ok: false, error: res.error };
 
   await admin
