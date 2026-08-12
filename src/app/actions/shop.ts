@@ -64,7 +64,11 @@ export async function assignPickupDriver(orderId: string, driverId: string): Pro
     .select("order_no")
     .single();
   if (error) return { ok: false, error: error.message };
-  await notifyPickupAssigned(orderId, data.order_no, driverId);
+  after(async () => {
+    try {
+      await notifyPickupAssigned(orderId, data.order_no, driverId);
+    } catch {}
+  });
   revalidate(orderId);
   return { ok: true };
 }
@@ -101,16 +105,28 @@ export async function saveIntake(
   const pieces = items.reduce((s, i) => s + i.qty, 0);
   const total = items.reduce((s, i) => s + i.qty * i.unit_price_fils, 0);
 
+  // No separate "confirm payment" step: saving the price goes straight to
+  // washing, which charges the customer's wallet (the DB trigger, debt allowed).
   const { error } = await supabase
     .from("orders")
     .update({
       piece_count: pieces,
       price_fils: total,
       delivery_date: deliveryDate,
-      status: "awaiting_payment",
+      status: "washing",
     })
     .eq("id", orderId);
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    if (/INSUFFICIENT_CREDIT/.test(error.message)) return { ok: false, error: "insufficient_credit" };
+    return { ok: false, error: error.message };
+  }
+
+  // Send the receipt (with the link) to the customer in the background.
+  after(async () => {
+    try {
+      await sendReceiptFor(orderId);
+    } catch {}
+  });
 
   revalidate(orderId);
   return { ok: true };
@@ -182,7 +198,11 @@ export async function assignDeliveryDriver(orderId: string, driverId: string): P
     if (/CUSTOMER_IN_DEBT/.test(error.message)) return { ok: false, error: "customer_in_debt" };
     return { ok: false, error: error.message };
   }
-  await notifyReadyForDelivery(orderId, data.order_no, driverId);
+  after(async () => {
+    try {
+      await notifyReadyForDelivery(orderId, data.order_no, driverId);
+    } catch {}
+  });
   revalidate(orderId);
   return { ok: true };
 }

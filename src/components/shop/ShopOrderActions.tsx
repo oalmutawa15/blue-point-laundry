@@ -496,8 +496,10 @@ function DispatchControl({ order }: { order: Tables<"orders"> }) {
   const [busy, setBusy] = useState(false);
   const [date, setDate] = useState(order.dispatch_date ?? kuwaitToday());
 
+  // Only while a driver leg is active — once received at the shop / delivered,
+  // the dispatch is done and this box disappears.
   const hasDriverLeg = order.status === "pickup_requested" || order.status === "delivering";
-  if (!hasDriverLeg && !order.dispatch_date) return null;
+  if (!hasDriverLeg) return null;
 
   const yesterday = (() => {
     const d = new Date(`${kuwaitToday()}T00:00:00Z`);

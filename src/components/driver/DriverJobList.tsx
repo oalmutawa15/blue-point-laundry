@@ -28,7 +28,7 @@ function JobCard({ order, kind }: { order: OrderWithRelations; kind: "pickup" | 
     router.refresh();
   }
 
-  const late = isLate(order.dispatch_date, order.status);
+  const late = order.dispatch_late || isLate(order.dispatch_date, order.status);
 
   return (
     <div className={`rounded-2xl bg-card p-4 shadow-sm ${late ? "ring-2 ring-danger" : ""}`}>

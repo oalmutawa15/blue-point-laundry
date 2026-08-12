@@ -1,10 +1,12 @@
 "use server";
 
 import { randomUUID } from "crypto";
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyDelivered, notifyCustomerStage, notifyDeliveryPhoto } from "@/lib/notify";
+import { kuwaitDate } from "@/lib/dispatch";
 
 type Ok = { ok: true } | { ok: false; error: string };
 
@@ -28,10 +30,19 @@ export async function markPickedUp(orderId: string): Promise<Ok> {
     .update({ status: "picked_up" })
     .eq("id", orderId)
     .eq("pickup_driver_id", user.id)
-    .select("order_no, customer_id")
+    .select("order_no, customer_id, dispatch_date")
     .single();
   if (error) return { ok: false, error: error.message };
-  await notifyCustomerStage(orderId, data.order_no, data.customer_id, "picked_up");
+  // If this pickup was completed after its dispatch day, mark it late for good.
+  if (data.dispatch_date && data.dispatch_date < kuwaitDate(0)) {
+    await supabase.from("orders").update({ dispatch_late: true }).eq("id", orderId);
+  }
+  // Notify in the background so the driver's button returns instantly.
+  after(async () => {
+    try {
+      await notifyCustomerStage(orderId, data.order_no, data.customer_id, "picked_up");
+    } catch {}
+  });
   revalidate(orderId);
   return { ok: true };
 }
@@ -72,20 +83,26 @@ export async function markDelivered(orderId: string, photoDataUrl?: string): Pro
     .update({ status: "delivered", ...(photoUrl ? { delivery_photo_url: photoUrl } : {}) })
     .eq("id", orderId)
     .eq("delivery_driver_id", user.id)
-    .select("order_no, customer_id")
+    .select("order_no, customer_id, dispatch_date")
     .single();
   if (error) {
     if (/INSUFFICIENT_CREDIT/.test(error.message)) return { ok: false, error: "insufficient_credit" };
     return { ok: false, error: error.message };
   }
 
-  // Send the delivery-proof photo to the customer AND the shop. If for some
-  // reason there's no photo, fall back to the plain "delivered" text.
-  if (photoUrl) {
-    await notifyDeliveryPhoto(orderId, data.order_no, data.customer_id, photoUrl);
-  } else {
-    await notifyDelivered(orderId, data.order_no, data.customer_id);
+  // If this delivery was completed after its dispatch day, mark it late for good.
+  if (data.dispatch_date && data.dispatch_date < kuwaitDate(0)) {
+    await supabase.from("orders").update({ dispatch_late: true }).eq("id", orderId);
   }
+
+  // Send the delivery-proof photo (or plain "delivered") to the customer + shop
+  // in the background so the driver's button returns instantly.
+  after(async () => {
+    try {
+      if (photoUrl) await notifyDeliveryPhoto(orderId, data.order_no, data.customer_id, photoUrl);
+      else await notifyDelivered(orderId, data.order_no, data.customer_id);
+    } catch {}
+  });
   revalidate(orderId);
   return { ok: true };
 }

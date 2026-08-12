@@ -301,6 +301,7 @@ export type Database = {
           delivery_driver_id: string | null
           delivery_photo_url: string | null
           dispatch_date: string | null
+          dispatch_late: boolean
           fulfillment: string
           id: string
           order_no: string
@@ -325,6 +326,7 @@ export type Database = {
           delivery_driver_id?: string | null
           delivery_photo_url?: string | null
           dispatch_date?: string | null
+          dispatch_late?: boolean
           fulfillment?: string
           id?: string
           order_no?: string
@@ -349,6 +351,7 @@ export type Database = {
           delivery_driver_id?: string | null
           delivery_photo_url?: string | null
           dispatch_date?: string | null
+          dispatch_late?: boolean
           fulfillment?: string
           id?: string
           order_no?: string
