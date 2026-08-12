@@ -43,7 +43,9 @@ async function record(
 // two customer touchpoints are the receipt link (notifyReceipt) and delivery
 // (notifyDelivered). No messages for the intermediate shop steps.
 const CUSTOMER_STAGE_MESSAGES: Record<string, (orderNo: string) => string> = {
-  picked_up: (o) => `🚗 استلم المندوب طلبك ${o} وهو في طريقه إلى المصبغة.`,
+  picked_up: (o) =>
+    `🚗 استلم المندوب طلبك ${o} وهو في طريقه إلى مصبغة بلو بوينت.` +
+    `\n\n🚗 Your order ${o} has been picked up and is on its way to Blue Point Laundry.`,
 };
 
 // Notify the customer of an order stage change. No-op for stages without a
@@ -128,7 +130,9 @@ export async function notifyDeliveryPhoto(
       recipientId: customerId,
       recipientPhone: c?.phone ?? null,
       template: "delivered_photo",
-      caption: `✅ تم توصيل طلبك ${orderNo} بنجاح. هذه صورة التسليم. شكراً لاختيارك بلو بوينت.`,
+      caption:
+        `✅ تم توصيل طلبك ${orderNo} بنجاح. هذه صورة التسليم. شكراً لاختيارك بلو بوينت.` +
+        `\n\n✅ Your order ${orderNo} has been delivered. Here is the delivery photo. Thank you for choosing Blue Point Laundry.`,
       imageUrl: photoUrl,
     });
   }
@@ -144,7 +148,9 @@ export async function notifyDeliveryPhoto(
       recipientId: s.id,
       recipientPhone: s.phone,
       template: "delivered_photo_shop",
-      caption: `📷 تم تسليم الطلب ${orderNo}. صورة التسليم مرفقة.`,
+      caption:
+        `📷 تم تسليم الطلب ${orderNo}. صورة التسليم مرفقة.` +
+        `\n\n📷 Order ${orderNo} delivered. Delivery photo attached.`,
       imageUrl: photoUrl,
     });
   }
@@ -193,7 +199,9 @@ export async function notifyNewOrder(orderId: string, orderNo: string) {
     .from("profiles")
     .select("id, phone")
     .in("role", ["shop", "admin"]);
-  const message = `🧺 طلب جديد ${orderNo} في بلو بوينت. افتح الموقع لمراجعة الطلب وتعيين مندوب.`;
+  const message =
+    `🧺 طلب جديد ${orderNo} في بلو بوينت. افتح الموقع لمراجعة الطلب وتعيين مندوب.` +
+    `\n\n🧺 New order ${orderNo} at Blue Point. Open the site to review it and assign a driver.`;
   for (const s of staff ?? []) {
     await record(admin, {
       orderId,
@@ -222,7 +230,9 @@ export async function notifyPickupAssigned(
     recipientId: driverId,
     recipientPhone: d?.phone ?? null,
     template: "pickup_assigned",
-    message: `🚗 لديك طلب استلام ${orderNo}. افتح الموقع لعرض موقع الاستلام.`,
+    message:
+      `🚗 لديك طلب استلام ${orderNo}. افتح الموقع لعرض موقع الاستلام.` +
+      `\n\n🚗 You have a pickup ${orderNo}. Open the site to see the pickup location.`,
   });
 }
 
@@ -243,7 +253,9 @@ export async function notifyReadyForDelivery(
     recipientId: driverId,
     recipientPhone: d?.phone ?? null,
     template: "ready_for_delivery",
-    message: `📦 الطلب ${orderNo} جاهز للتوصيل. افتح الموقع لعرض موقع التسليم.`,
+    message:
+      `📦 الطلب ${orderNo} جاهز للتوصيل. افتح الموقع لعرض موقع التسليم.` +
+      `\n\n📦 Order ${orderNo} is ready for delivery. Open the site to see the delivery location.`,
   });
 }
 
@@ -259,7 +271,9 @@ export async function notifyLateOrders(
     .select("id, phone")
     .in("role", ["shop", "admin"]);
   const list = orders.map((o) => o.order_no).join("، ");
-  const message = `⚠️ لديك ${orders.length} طلب متأخر لم يُنجزها المندوب في وقتها:\n${list}\nيرجى المتابعة مع المندوبين.`;
+  const message =
+    `⚠️ لديك ${orders.length} طلب متأخر لم يُنجزها المندوب في وقتها:\n${list}\nيرجى المتابعة مع المندوبين.` +
+    `\n\n⚠️ You have ${orders.length} late order(s) not completed on time:\n${list}\nPlease follow up with the drivers.`;
   let notified = 0;
   for (const s of staff ?? []) {
     let status = "queued";
@@ -303,6 +317,8 @@ export async function notifyDelivered(
     recipientId: customerId,
     recipientPhone: c?.phone ?? null,
     template: "delivered",
-    message: `✅ تم توصيل طلبك ${orderNo} بنجاح. شكراً لاختيارك بلو بوينت.`,
+    message:
+      `✅ تم توصيل طلبك ${orderNo} بنجاح. شكراً لاختيارك بلو بوينت.` +
+      `\n\n✅ Your order ${orderNo} has been delivered. Thank you for choosing Blue Point Laundry.`,
   });
 }
