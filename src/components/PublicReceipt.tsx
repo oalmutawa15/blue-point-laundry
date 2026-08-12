@@ -23,6 +23,16 @@ export type ReceiptData = {
   priceFils: number | null;
   items: ReceiptItem[];
   preferences?: Preferences;
+  paymentMethod?: string | null;
+};
+
+// Bilingual label for a walk-in payment method.
+const PAYMENT_LABELS: Record<string, { ar: string; en: string }> = {
+  cash: { ar: "نقداً", en: "Cash" },
+  knet: { ar: "كي نت", en: "KNET" },
+  credit_card: { ar: "بطاقة ائتمان", en: "Credit card" },
+  wallet: { ar: "رصيد الموقع", en: "Website credit" },
+  link: { ar: "رابط دفع", en: "Payment link" },
 };
 
 export function PublicReceipt({ data }: { data: ReceiptData }) {
@@ -99,6 +109,12 @@ export function PublicReceipt({ data }: { data: ReceiptData }) {
         <div className="mt-4 space-y-2 border-t border-border pt-4 text-sm">
           {data.pieceCount != null && (
             <Row label={t.publicReceipt.pieces} value={<span className="tabular-nums">{data.pieceCount}</span>} />
+          )}
+          {data.paymentMethod && PAYMENT_LABELS[data.paymentMethod] && (
+            <Row
+              label={lang === "ar" ? "طريقة الدفع" : "Payment method"}
+              value={PAYMENT_LABELS[data.paymentMethod][lang]}
+            />
           )}
           <div className="flex items-center justify-between text-lg font-extrabold">
             <span>{t.publicReceipt.total}</span>

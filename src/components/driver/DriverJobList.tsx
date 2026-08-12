@@ -8,6 +8,7 @@ import { useRealtimeOrders } from "@/lib/useRealtimeOrders";
 import { formatAddress, mapsUrl } from "@/lib/address";
 import { markPickedUp } from "@/app/actions/driver";
 import { isLate, kuwaitToday } from "@/lib/lateness";
+import { routeOrders } from "@/lib/driverRoute";
 import type { OrderWithRelations } from "@/lib/orderTypes";
 
 function JobCard({ order, kind }: { order: OrderWithRelations; kind: "pickup" | "delivery" }) {
@@ -92,20 +93,6 @@ function JobCard({ order, kind }: { order: OrderWithRelations; kind: "pickup" | 
   );
 }
 
-// Group orders so the same area is together (and roughly geographic), then list.
-function byArea(orders: OrderWithRelations[]): OrderWithRelations[] {
-  return [...orders].sort((a, b) => {
-    const aa = a.pickup_address;
-    const ba = b.pickup_address;
-    const areaCmp = (aa?.area ?? "").localeCompare(ba?.area ?? "");
-    if (areaCmp !== 0) return areaCmp;
-    // within the same area, order by coordinates when available
-    if (aa?.lat != null && ba?.lat != null && aa.lat !== ba.lat) return aa.lat - ba.lat;
-    if (aa?.lng != null && ba?.lng != null && aa.lng !== ba.lng) return aa.lng - ba.lng;
-    return 0;
-  });
-}
-
 function DaySection({
   title,
   pickups,
@@ -123,7 +110,7 @@ function DaySection({
       {pickups.length > 0 && (
         <div className="space-y-3">
           <h3 className="text-sm font-bold text-muted-foreground">{t.driver.pickups}</h3>
-          {byArea(pickups).map((o) => (
+          {routeOrders(pickups).map((o) => (
             <JobCard key={o.id} order={o} kind="pickup" />
           ))}
         </div>
@@ -131,7 +118,7 @@ function DaySection({
       {deliveries.length > 0 && (
         <div className="space-y-3">
           <h3 className="text-sm font-bold text-muted-foreground">{t.driver.deliveries}</h3>
-          {byArea(deliveries).map((o) => (
+          {routeOrders(deliveries).map((o) => (
             <JobCard key={o.id} order={o} kind="delivery" />
           ))}
         </div>
