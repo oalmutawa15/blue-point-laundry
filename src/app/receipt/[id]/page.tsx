@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PublicReceipt, type ReceiptData } from "@/components/PublicReceipt";
 import { ReceiptNotFound } from "@/components/ReceiptNotFound";
+import { LanguageProvider } from "@/lib/i18n/LanguageProvider";
 
 export const dynamic = "force-dynamic";
 
@@ -12,10 +13,11 @@ export default async function ReceiptPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ t?: string }>;
+  searchParams: Promise<{ t?: string; lang?: string }>;
 }) {
   const { id } = await params;
-  const { t: token } = await searchParams;
+  const { t: token, lang } = await searchParams;
+  const initialLang = lang === "en" ? "en" : "ar";
 
   if (!token) return <ReceiptNotFound />;
 
@@ -46,5 +48,9 @@ export default async function ReceiptPage({
     items: (order.items ?? []) as ReceiptData["items"],
   };
 
-  return <PublicReceipt data={data} />;
+  return (
+    <LanguageProvider initialLang={initialLang}>
+      <PublicReceipt data={data} />
+    </LanguageProvider>
+  );
 }

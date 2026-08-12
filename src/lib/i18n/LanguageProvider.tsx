@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { dictionaries, dir, type Dictionary, type Lang } from "./dictionaries";
+import { saveLangPreference } from "@/app/actions/prefs";
 
 const STORAGE_KEY = "bp_lang";
 
@@ -45,11 +46,18 @@ export function LanguageProvider({
     window.localStorage.setItem(STORAGE_KEY, lang);
   }, [lang]);
 
+  // Persist the choice on the user's profile (for logged-in users) so
+  // server-sent messages like the receipt use the same language.
+  const setLang = (l: Lang) => {
+    setLangState(l);
+    saveLangPreference(l);
+  };
+
   const value = useMemo<LanguageContextValue>(
     () => ({
       lang,
-      setLang: setLangState,
-      toggle: () => setLangState((prev) => (prev === "ar" ? "en" : "ar")),
+      setLang,
+      toggle: () => setLang(lang === "ar" ? "en" : "ar"),
       dir: dir(lang),
       t: dictionaries[lang],
     }),

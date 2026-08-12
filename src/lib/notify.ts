@@ -161,10 +161,21 @@ export async function notifyReceipt(
   const admin = createAdminClient();
   const { data: c } = await admin
     .from("profiles")
-    .select("phone")
+    .select("phone, preferences")
     .eq("id", customerId)
     .single();
-  const message = `🧼 بدأنا غسيل طلبك ${orderNo} في بلو بوينت.\nهذه فاتورة طلبك — يمكنك عرضها وتحميلها من هنا:\n${url}`;
+  // Match the language the customer uses on the website (saved on their profile).
+  const prefs = c?.preferences;
+  const lang =
+    prefs && typeof prefs === "object" && !Array.isArray(prefs) &&
+    (prefs as Record<string, unknown>).lang === "en"
+      ? "en"
+      : "ar";
+  const link = `${url}${url.includes("?") ? "&" : "?"}lang=${lang}`;
+  const message =
+    lang === "en"
+      ? `🧼 We've started washing your order ${orderNo} at Blue Point Laundry.\nView or download your receipt here:\n${link}`
+      : `🧼 بدأنا غسيل طلبك ${orderNo} في بلو بوينت.\nهذه فاتورة طلبك — يمكنك عرضها وتحميلها من هنا:\n${link}`;
   await record(admin, {
     orderId,
     recipientId: customerId,
