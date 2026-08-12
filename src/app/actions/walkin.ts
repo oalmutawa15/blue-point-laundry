@@ -24,6 +24,22 @@ export async function searchCustomers(query: string): Promise<CustomerHit[]> {
   return (data ?? []) as CustomerHit[];
 }
 
+// Look up a customer by exact phone (for the walk-in builder's auto-detect).
+// Returns the match or null. Staff only.
+export async function findCustomerByPhone(phone: string): Promise<CustomerHit | null> {
+  if (!(await getStaffProfile())) return null;
+  const norm = normalizeKwPhone(phone);
+  if (!norm) return null;
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("profiles")
+    .select("id, full_name, phone")
+    .eq("phone", norm.e164)
+    .eq("role", "customer")
+    .maybeSingle();
+  return (data as CustomerHit) ?? null;
+}
+
 async function findOrCreateCustomer(input: {
   customerId?: string;
   name?: string;

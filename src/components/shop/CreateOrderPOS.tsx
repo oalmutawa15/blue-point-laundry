@@ -11,7 +11,7 @@ import {
   type FlatPriceItem,
   type PriceService,
 } from "@/lib/priceList";
-import { searchCustomers, createWalkInOrder, type CustomerHit } from "@/app/actions/walkin";
+import { findCustomerByPhone, createWalkInOrder, type CustomerHit } from "@/app/actions/walkin";
 import type { ItemInput } from "@/app/actions/shop";
 
 const SERVICES: PriceService[] = ["wash", "dryclean", "iron"];
@@ -103,13 +103,25 @@ export function CreateOrderPOS() {
   const [customName, setCustomName] = useState("");
   const [customPrice, setCustomPrice] = useState("");
 
-  // Customer
-  const [custMode, setCustMode] = useState<"search" | "new">("search");
-  const [custQuery, setCustQuery] = useState("");
-  const [custResults, setCustResults] = useState<CustomerHit[]>([]);
-  const [selectedCust, setSelectedCust] = useState<CustomerHit | null>(null);
+  // Customer — just a phone number. If it's a known customer we auto-detect them;
+  // if not, we ask for a name (required) and create them on order.
+  const [phone, setPhone] = useState("");
+  const [matched, setMatched] = useState<CustomerHit | null>(null);
+  const [checked, setChecked] = useState(false); // looked this phone up yet?
   const [newName, setNewName] = useState("");
-  const [newPhone, setNewPhone] = useState("");
+
+  async function onPhoneChange(v: string) {
+    const digits = v.replace(/\D/g, "").slice(0, 8);
+    setPhone(digits);
+    setMatched(null);
+    setChecked(false);
+    setNewName("");
+    if (digits.length === 8) {
+      const c = await findCustomerByPhone(digits);
+      setMatched(c);
+      setChecked(true);
+    }
+  }
 
   const [deliveryDate, setDeliveryDate] = useState("");
   const [timeSlot, setTimeSlot] = useState("");
@@ -156,36 +168,25 @@ export function CreateOrderPOS() {
   const lineFils = (l: CartLine) => l.qty * l.priceFils * fastMult;
   const total = cart.reduce((s, l) => s + lineFils(l), 0);
 
-  async function onCustSearch(v: string) {
-    setCustQuery(v);
-    setSelectedCust(null);
-    if (v.trim().length < 2) {
-      setCustResults([]);
-      return;
-    }
-    setCustResults(await searchCustomers(v));
-  }
-
   async function submit() {
     setError(null);
     if (cart.length === 0) return setError(t.pos.noItems);
     if (!fulfillment) return setError(t.pos.needFulfillment);
 
-    // Resolve the customer. In "search" mode, a typed phone number is enough —
-    // even if the staff didn't tap a suggestion, we pass it through and the
-    // server finds the existing customer (or creates them). This is why an
-    // "existing customer" that isn't tapped in the dropdown still works.
-    const searchDigits = custQuery.replace(/\D/g, "");
+    // Resolve the customer from the single phone field:
+    //  - 8-digit phone required
+    //  - known number → use that customer
+    //  - unknown number → name is required, and we create them on order
     let customerId: string | undefined;
     let newCustomer: { name: string; phone: string } | undefined;
-    if (selectedCust) {
-      customerId = selectedCust.id;
-    } else if (custMode === "new" && newPhone.trim()) {
-      newCustomer = { name: newName.trim(), phone: newPhone.trim() };
-    } else if (custMode === "search" && searchDigits.length >= 8) {
-      newCustomer = { name: "", phone: custQuery.trim() };
+    if (phone.length !== 8) {
+      return setError(t.pos.needPhone);
+    } else if (matched) {
+      customerId = matched.id;
+    } else if (newName.trim()) {
+      newCustomer = { name: newName.trim(), phone };
     } else {
-      return setError(t.pos.needCustomer);
+      return setError(t.pos.nameRequired);
     }
 
     const orderItems: ItemInput[] = cart.map((l) => ({
@@ -332,63 +333,35 @@ export function CreateOrderPOS() {
           )}
         </div>
 
-        {/* Customer */}
-        <div className="rounded-2xl bg-card p-3 shadow-sm">
-          <div className="mb-2 flex gap-2">
-            <button
-              onClick={() => setCustMode("search")}
-              className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-bold ${custMode === "search" ? "bg-brand text-brand-foreground" : "bg-muted text-muted-foreground"}`}
-            >
-              {t.pos.existingCustomer}
-            </button>
-            <button
-              onClick={() => { setCustMode("new"); setSelectedCust(null); }}
-              className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-bold ${custMode === "new" ? "bg-brand text-brand-foreground" : "bg-muted text-muted-foreground"}`}
-            >
-              {t.pos.newCustomer}
-            </button>
-          </div>
+        {/* Customer — one phone field; known number auto-fills, new number asks a name */}
+        <div className="space-y-2 rounded-2xl bg-card p-3 shadow-sm">
+          <input
+            value={phone}
+            onChange={(e) => onPhoneChange(e.target.value)}
+            placeholder={t.pos.customerPhone}
+            inputMode="numeric"
+            dir="ltr"
+            className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-brand"
+          />
 
-          {custMode === "search" ? (
-            <div className="relative">
-              <input
-                value={selectedCust ? `${selectedCust.full_name || selectedCust.phone}` : custQuery}
-                onChange={(e) => onCustSearch(e.target.value)}
-                placeholder={t.pos.searchCustomers}
-                className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-brand"
-              />
-              {!selectedCust && custResults.length > 0 && (
-                <ul className="absolute z-50 mt-1 max-h-52 w-full overflow-auto rounded-xl border border-border bg-white py-1 shadow-xl">
-                  {custResults.map((c) => (
-                    <li key={c.id}>
-                      <button
-                        onClick={() => { setSelectedCust(c); setCustResults([]); }}
-                        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-start text-sm hover:bg-muted"
-                      >
-                        <span className="font-medium">{c.full_name || "—"}</span>
-                        <span dir="ltr" className="text-xs text-muted-foreground">{c.phone}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-2">
+          {/* Known customer → show their name */}
+          {checked && matched && (
+            <p className="flex items-center gap-1.5 text-sm font-semibold text-success">
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m20 6-11 11-5-5" /></svg>
+              {matched.full_name || matched.phone}
+            </p>
+          )}
+
+          {/* Unknown number → require a name */}
+          {checked && !matched && (
+            <div>
               <input
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder={t.pos.customerName}
                 className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-brand"
               />
-              <input
-                value={newPhone}
-                onChange={(e) => setNewPhone(e.target.value.replace(/\D/g, "").slice(0, 8))}
-                placeholder={t.pos.customerPhone}
-                inputMode="numeric"
-                dir="ltr"
-                className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-brand"
-              />
+              <p className="mt-1 text-xs text-muted-foreground">{t.pos.newCustomerHint}</p>
             </div>
           )}
         </div>
