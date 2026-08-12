@@ -14,9 +14,9 @@ export function PreferencesView({ initial }: { initial: Preferences }) {
   const [saved, setSaved] = useState(false);
   const name = (o: { en: string; ar: string }) => (lang === "ar" ? o.ar : o.en);
 
-  function pick(group: string, option: string) {
+  function setGroup(group: string, value: string) {
     setSaved(false);
-    setPrefs((p) => ({ ...p, [group]: p[group as keyof Preferences] === option ? undefined : option }));
+    setPrefs((p) => ({ ...p, [group]: value || undefined }));
   }
 
   async function save() {
@@ -34,30 +34,40 @@ export function PreferencesView({ initial }: { initial: Preferences }) {
         <p className="mt-1 text-sm text-muted-foreground">{t.preferences.subtitle}</p>
       </div>
 
-      {PREF_GROUPS.map((g) => (
-        <div key={g.key} className="rounded-2xl bg-card p-4 shadow-sm">
-          <p className="mb-3 font-bold text-brand">{name(g)}</p>
-          <div className="flex flex-wrap gap-2">
-            {g.options.map((o) => {
-              const active = prefs[g.key] === o.key;
-              return (
-                <button
-                  key={o.key}
-                  type="button"
-                  onClick={() => pick(g.key, o.key)}
-                  className={`rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors ${
-                    active
-                      ? "border-brand bg-brand text-brand-foreground"
-                      : "border-border bg-white text-foreground hover:border-brand"
-                  }`}
-                >
+      <div className="space-y-3 rounded-2xl bg-card p-4 shadow-sm">
+        {PREF_GROUPS.map((g) => (
+          <label key={g.key} className="block">
+            <span className="mb-1 block text-sm font-bold text-brand">{name(g)}</span>
+            <select
+              value={(prefs[g.key] as string) ?? ""}
+              onChange={(e) => setGroup(g.key, e.target.value)}
+              className="w-full rounded-xl border border-border bg-white px-3 py-2.5 text-sm font-semibold outline-none focus:border-brand"
+            >
+              <option value="">{t.preferences.choose}</option>
+              {g.options.map((o) => (
+                <option key={o.key} value={o.key}>
                   {name(o)}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      ))}
+                </option>
+              ))}
+            </select>
+          </label>
+        ))}
+
+        {/* Free-text notes */}
+        <label className="block">
+          <span className="mb-1 block text-sm font-bold text-brand">{t.preferences.notes}</span>
+          <textarea
+            value={prefs.notes ?? ""}
+            onChange={(e) => {
+              setSaved(false);
+              setPrefs((p) => ({ ...p, notes: e.target.value }));
+            }}
+            rows={3}
+            placeholder={t.preferences.notesPlaceholder}
+            className="w-full resize-none rounded-xl border border-border bg-white px-3 py-2.5 text-sm outline-none focus:border-brand"
+          />
+        </label>
+      </div>
 
       <div className="flex items-center gap-3">
         <button

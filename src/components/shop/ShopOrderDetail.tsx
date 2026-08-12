@@ -7,6 +7,7 @@ import { OrderStatusBadge } from "@/components/customer/OrderStatusBadge";
 import { ShopOrderActions } from "./ShopOrderActions";
 import { formatMoney } from "@/lib/money";
 import { formatAddress, mapsUrl } from "@/lib/address";
+import { PREF_GROUPS, prefLabel, type Preferences } from "@/lib/preferences";
 import type { Tables } from "@/types/database";
 import type { CustomerLite, DriverLite } from "@/lib/orderTypes";
 
@@ -29,6 +30,14 @@ export function ShopOrderDetail({
 }) {
   const { t, lang } = useLang();
   const locale = lang === "ar" ? "ar-KW" : "en-GB";
+
+  // The customer's saved laundry preferences (starch, ironing, etc.) + notes.
+  const prefs = (customer?.preferences ?? {}) as Preferences;
+  const prefRows = PREF_GROUPS.map((g) => ({
+    label: lang === "ar" ? g.ar : g.en,
+    value: prefLabel(g.key, prefs[g.key], lang),
+  })).filter((r) => r.value);
+  const hasPrefs = prefRows.length > 0 || !!prefs.notes?.trim();
   const sortedEvents = [...events].sort(
     (a, b) => +new Date(a.created_at) - +new Date(b.created_at),
   );
@@ -75,6 +84,24 @@ export function ShopOrderDetail({
           </a>
         )}
       </div>
+
+      {/* Customer's saved laundry preferences */}
+      {hasPrefs && (
+        <div className="rounded-2xl bg-card p-4 shadow-sm">
+          <p className="mb-2 text-xs font-semibold text-muted-foreground">{t.preferences.title}</p>
+          <div className="space-y-1.5">
+            {prefRows.map((r) => (
+              <div key={r.label} className="flex items-center justify-between gap-2 text-sm">
+                <span className="text-muted-foreground">{r.label}</span>
+                <span className="font-bold">{r.value}</span>
+              </div>
+            ))}
+            {prefs.notes?.trim() && (
+              <p className="mt-2 rounded-lg bg-muted px-3 py-2 text-sm">{prefs.notes}</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {address?.lat != null && address?.lng != null && (
         <div className="rounded-2xl bg-card p-3 shadow-sm">

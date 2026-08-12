@@ -81,6 +81,9 @@ export const dictionaries = {
     preferences: {
       title: "التفضيلات",
       subtitle: "اختر تفضيلاتك المفضلة لملابسك",
+      choose: "— اختر —",
+      notes: "ملاحظات إضافية",
+      notesPlaceholder: "أي ملاحظات إضافية لطلباتك…",
       save: "حفظ",
       clear: "مسح",
       saved: "تم حفظ التفضيلات",
@@ -638,6 +641,9 @@ export const dictionaries = {
     preferences: {
       title: "Preferences",
       subtitle: "Choose your favourite settings for your clothes",
+      choose: "— Choose —",
+      notes: "Extra notes",
+      notesPlaceholder: "Any extra notes for your orders…",
       save: "Save",
       clear: "Clear",
       saved: "Preferences saved",

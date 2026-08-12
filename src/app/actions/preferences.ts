@@ -11,9 +11,21 @@ export async function savePreferences(prefs: Preferences): Promise<{ ok: boolean
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "unauthorized" };
 
+  // Merge over the existing preferences so unrelated keys (e.g. the saved UI
+  // language) aren't wiped.
+  const { data: prof } = await supabase
+    .from("profiles")
+    .select("preferences")
+    .eq("id", user.id)
+    .single();
+  const existing =
+    prof?.preferences && typeof prof.preferences === "object" && !Array.isArray(prof.preferences)
+      ? (prof.preferences as Record<string, unknown>)
+      : {};
+
   const { error } = await supabase
     .from("profiles")
-    .update({ preferences: prefs })
+    .update({ preferences: { ...existing, ...prefs } })
     .eq("id", user.id);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/preferences");

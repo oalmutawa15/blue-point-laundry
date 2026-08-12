@@ -1,6 +1,11 @@
 import type { Tables } from "@/types/database";
+import type { Json } from "@/types/database";
 
-export type CustomerLite = { full_name: string | null; phone: string } | null;
+export type CustomerLite = {
+  full_name: string | null;
+  phone: string;
+  preferences?: Json;
+} | null;
 
 export type OrderWithRelations = Tables<"orders"> & {
   customer: CustomerLite;

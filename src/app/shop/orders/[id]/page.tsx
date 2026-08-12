@@ -22,7 +22,7 @@ export default async function ShopOrderPage({
     await Promise.all([
       supabase
         .from("profiles")
-        .select("full_name, phone")
+        .select("full_name, phone, preferences")
         .eq("id", order.customer_id)
         .single(),
       order.pickup_address_id
