@@ -7,7 +7,7 @@ import { OrderStatusBadge } from "@/components/customer/OrderStatusBadge";
 import { ShopOrderActions } from "./ShopOrderActions";
 import { formatMoney } from "@/lib/money";
 import { formatAddress, mapsUrl } from "@/lib/address";
-import { PREF_GROUPS, prefLabel, type Preferences } from "@/lib/preferences";
+import { PREF_GROUPS, prefLabel, biGroup, type Preferences } from "@/lib/preferences";
 import type { Tables } from "@/types/database";
 import type { CustomerLite, DriverLite } from "@/lib/orderTypes";
 
@@ -34,8 +34,8 @@ export function ShopOrderDetail({
   // The customer's saved laundry preferences (starch, ironing, etc.) + notes.
   const prefs = (customer?.preferences ?? {}) as Preferences;
   const prefRows = PREF_GROUPS.map((g) => ({
-    label: lang === "ar" ? g.ar : g.en,
-    value: prefLabel(g.key, prefs[g.key], lang),
+    label: biGroup(g),
+    value: prefLabel(g.key, prefs[g.key]),
   })).filter((r) => r.value);
   const hasPrefs = prefRows.length > 0 || !!prefs.notes?.trim();
   const sortedEvents = [...events].sort(

@@ -1,25 +1,15 @@
 // Customer laundry preferences shown on the Preferences screen and to the shop
-// on each order. Set once, saved on the account, editable anytime.
+// on each order. Set once, saved on the account, editable anytime. Labels are
+// always shown bilingually (Arabic / English) since the terms are specialised.
 export type PrefOption = { key: string; en: string; ar: string };
 export type PrefGroup = {
-  key: "ghotra" | "nasha" | "kawi" | "perfume";
+  key: "nasha" | "kawi" | "dishdasha" | "perfume";
   en: string;
   ar: string;
   options: PrefOption[];
 };
 
 export const PREF_GROUPS: PrefGroup[] = [
-  {
-    key: "ghotra",
-    en: "Ghotra Type",
-    ar: "نوع الغترة",
-    options: [
-      { key: "square", en: "Square", ar: "مربعة" },
-      { key: "square_mirzam", en: "Square Mirzam", ar: "مربعة مرزام" },
-      { key: "straight", en: "Straight", ar: "مستقيمة" },
-      { key: "merzam", en: "Merzam", ar: "مرزام" },
-    ],
-  },
   {
     key: "nasha",
     en: "Starch",
@@ -34,10 +24,22 @@ export const PREF_GROUPS: PrefGroup[] = [
   {
     key: "kawi",
     en: "Ironing",
-    ar: "الكوي",
+    ar: "كوي",
     options: [
-      { key: "seven", en: "Seven", ar: "سبعة" },
+      { key: "triangle", en: "Triangle", ar: "مثلث" },
+      { key: "straight", en: "Straight line", ar: "خط سيده" },
+      { key: "merzam", en: "Merzam", ar: "مرزام" },
       { key: "square", en: "Square", ar: "مربع" },
+    ],
+  },
+  {
+    key: "dishdasha",
+    en: "Dishdasha",
+    ar: "دشاديش",
+    options: [
+      { key: "side", en: "Side line", ar: "خط جانبي" },
+      { key: "center", en: "Center line", ar: "خط بالنص" },
+      { key: "round", en: "Round press", ar: "كوي دائري" },
     ],
   },
   {
@@ -45,8 +47,8 @@ export const PREF_GROUPS: PrefGroup[] = [
     en: "Perfume",
     ar: "العطر",
     options: [
-      { key: "no", en: "No Perfume", ar: "بدون عطر" },
-      { key: "yes", en: "With Perfume", ar: "مع عطر" },
+      { key: "no", en: "Without", ar: "بدون عطر" },
+      { key: "yes", en: "With perfume", ar: "مع عطر" },
     ],
   },
 ];
@@ -59,10 +61,18 @@ export type Preferences = Partial<Record<PrefGroup["key"], string>> & {
   lang?: string;
 };
 
-// Label for a stored option value, in the given language ("" if unset).
-export function prefLabel(groupKey: PrefGroup["key"], value: string | undefined, lang: "ar" | "en"): string {
+// Bilingual label "Arabic / English", shown everywhere for clarity.
+export function biGroup(g: PrefGroup): string {
+  return `${g.ar} / ${g.en}`;
+}
+export function biOption(o: PrefOption): string {
+  return `${o.ar} / ${o.en}`;
+}
+
+// Bilingual label for a stored option value ("" if unset).
+export function prefLabel(groupKey: PrefGroup["key"], value: string | undefined): string {
   if (!value) return "";
   const g = PREF_GROUPS.find((x) => x.key === groupKey);
   const o = g?.options.find((x) => x.key === value);
-  return o ? (lang === "ar" ? o.ar : o.en) : "";
+  return o ? biOption(o) : "";
 }

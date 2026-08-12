@@ -3,16 +3,15 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLang } from "@/lib/i18n/LanguageProvider";
-import { PREF_GROUPS, type Preferences } from "@/lib/preferences";
+import { PREF_GROUPS, biGroup, biOption, type Preferences } from "@/lib/preferences";
 import { savePreferences } from "@/app/actions/preferences";
 
 export function PreferencesView({ initial }: { initial: Preferences }) {
-  const { t, lang } = useLang();
+  const { t } = useLang();
   const router = useRouter();
   const [prefs, setPrefs] = useState<Preferences>(initial);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
-  const name = (o: { en: string; ar: string }) => (lang === "ar" ? o.ar : o.en);
 
   function setGroup(group: string, value: string) {
     setSaved(false);
@@ -37,7 +36,7 @@ export function PreferencesView({ initial }: { initial: Preferences }) {
       <div className="space-y-3 rounded-2xl bg-card p-4 shadow-sm">
         {PREF_GROUPS.map((g) => (
           <label key={g.key} className="block">
-            <span className="mb-1 block text-sm font-bold text-brand">{name(g)}</span>
+            <span className="mb-1 block text-sm font-bold text-brand">{biGroup(g)}</span>
             <select
               value={(prefs[g.key] as string) ?? ""}
               onChange={(e) => setGroup(g.key, e.target.value)}
@@ -46,7 +45,7 @@ export function PreferencesView({ initial }: { initial: Preferences }) {
               <option value="">{t.preferences.choose}</option>
               {g.options.map((o) => (
                 <option key={o.key} value={o.key}>
-                  {name(o)}
+                  {biOption(o)}
                 </option>
               ))}
             </select>
