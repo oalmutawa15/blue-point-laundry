@@ -1,6 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendWhatsApp, sendWhatsAppImage, whatsappConfigured } from "@/lib/whatsapp";
+import { filsToKwd } from "@/lib/money";
 
 // Records an outbound message and sends it via WhatsApp when a gateway is configured.
 // Never throws — a failed send is logged and recorded, but won't break the order flow.
@@ -167,7 +168,7 @@ export async function notifyReceipt(
   const admin = createAdminClient();
   const { data: c } = await admin
     .from("profiles")
-    .select("phone, preferences")
+    .select("phone, preferences, credit_fils")
     .eq("id", customerId)
     .single();
   // Match the language the customer uses on the website (saved on their profile).
@@ -178,10 +179,12 @@ export async function notifyReceipt(
       ? "en"
       : "ar";
   const link = `${url}${url.includes("?") ? "&" : "?"}lang=${lang}`;
+  const balanceFils = c?.credit_fils ?? 0;
+  const balance = filsToKwd(balanceFils);
   const message =
     lang === "en"
-      ? `🧼 We've started washing your order ${orderNo} at Blue Point Laundry.\nView or download your receipt here:\n${link}`
-      : `🧼 بدأنا غسيل طلبك ${orderNo} في بلو بوينت.\nهذه فاتورة طلبك — يمكنك عرضها وتحميلها من هنا:\n${link}`;
+      ? `🧼 We've started washing your order ${orderNo} at Blue Point Laundry.\nView or download your receipt here:\n${link}\n\n💰 Wallet balance: ${balance} KWD`
+      : `🧼 بدأنا غسيل طلبك ${orderNo} في بلو بوينت.\nهذه فاتورة طلبك — يمكنك عرضها وتحميلها من هنا:\n${link}\n\n💰 رصيد محفظتك: ${balance} د.ك`;
   await record(admin, {
     orderId,
     recipientId: customerId,
@@ -189,6 +192,30 @@ export async function notifyReceipt(
     template: "receipt",
     message,
   });
+
+  // Low balance (< 5 KWD) → a follow-up nudge with a link to top up the wallet.
+  if (balanceFils < 5000) {
+    const origin = (() => {
+      try {
+        return new URL(url).origin;
+      } catch {
+        return "";
+      }
+    })();
+    const creditLink = `${origin}/credit`;
+    const lowMsg =
+      lang === "en"
+        ? `⚠️ Your Blue Point wallet balance is low (${balance} KWD). Top up here to keep ordering:\n${creditLink}`
+        : `⚠️ رصيد محفظتك في بلو بوينت منخفض (${balance} د.ك). اشحن رصيدك من هنا لمواصلة الطلب:\n${creditLink}`;
+    await record(admin, {
+      orderId,
+      recipientId: customerId,
+      recipientPhone: c?.phone ?? null,
+      template: "low_balance",
+      message: lowMsg,
+    });
+  }
+
   return { ok: true as const, phone: c?.phone ?? null };
 }
 
