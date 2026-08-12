@@ -36,7 +36,7 @@ export function ActivityList({ rows }: { rows: ActivityRow[] }) {
               </div>
               <span className="shrink-0 text-xs text-muted-foreground">
                 {new Date(r.created_at).toLocaleString(locale, {
-                  day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+                  day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true,
                 })}
               </span>
             </div>

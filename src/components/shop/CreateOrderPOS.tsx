@@ -16,12 +16,12 @@ import type { ItemInput } from "@/app/actions/shop";
 
 const SERVICES: PriceService[] = ["wash", "dryclean", "iron"];
 const TIME_SLOTS = [
-  "09:00–11:00",
-  "11:00–13:00",
-  "13:00–15:00",
-  "15:00–17:00",
-  "17:00–19:00",
-  "19:00–21:00",
+  "9:00–11:00 AM",
+  "11:00 AM–1:00 PM",
+  "1:00–3:00 PM",
+  "3:00–5:00 PM",
+  "5:00–7:00 PM",
+  "7:00–9:00 PM",
 ];
 
 type CartLine = {

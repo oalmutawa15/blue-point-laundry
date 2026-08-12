@@ -36,8 +36,9 @@ export function OrderProgress({
     new Date(s).toLocaleString(locale, {
       day: "numeric",
       month: "short",
-      hour: "2-digit",
+      hour: "numeric",
       minute: "2-digit",
+      hour12: true,
     });
 
   // Earliest timestamp recorded for each stage (from the order history).

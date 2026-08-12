@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getStaffProfile } from "@/lib/auth";
 import { notifyPickupAssigned, notifyReadyForDelivery } from "@/lib/notify";
 import { sendReceiptFor } from "@/lib/receipt";
+import { nextDispatchDate } from "@/lib/dispatch";
 import type { Database } from "@/types/database";
 
 export type RefundType = "wallet" | "cash" | "none";
@@ -51,9 +52,14 @@ async function setStatus(orderId: string, status: OrderStatus): Promise<Ok> {
 export async function assignPickupDriver(orderId: string, driverId: string): Promise<Ok> {
   if (!(await getStaffProfile())) return { ok: false, error: "forbidden" };
   const supabase = await createClient();
+  // Next-day dispatch: the driver only sees this from 00:00 (Kuwait) tomorrow.
   const { data, error } = await supabase
     .from("orders")
-    .update({ pickup_driver_id: driverId, status: "pickup_requested" })
+    .update({
+      pickup_driver_id: driverId,
+      status: "pickup_requested",
+      dispatch_date: nextDispatchDate(),
+    })
     .eq("id", orderId)
     .select("order_no")
     .single();
@@ -145,9 +151,14 @@ export async function markPickedUp(orderId: string): Promise<Ok> {
 export async function assignDeliveryDriver(orderId: string, driverId: string): Promise<Ok> {
   if (!(await getStaffProfile())) return { ok: false, error: "forbidden" };
   const supabase = await createClient();
+  // Next-day dispatch: the driver only sees this from 00:00 (Kuwait) tomorrow.
   const { data, error } = await supabase
     .from("orders")
-    .update({ delivery_driver_id: driverId, status: "delivering" })
+    .update({
+      delivery_driver_id: driverId,
+      status: "delivering",
+      dispatch_date: nextDispatchDate(),
+    })
     .eq("id", orderId)
     .select("order_no")
     .single();

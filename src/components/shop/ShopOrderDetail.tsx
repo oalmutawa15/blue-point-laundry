@@ -153,8 +153,9 @@ export function ShopOrderDetail({
                   {new Date(e.created_at).toLocaleString(locale, {
                     day: "numeric",
                     month: "short",
-                    hour: "2-digit",
+                    hour: "numeric",
                     minute: "2-digit",
+                    hour12: true,
                   })}
                 </span>
               </div>
