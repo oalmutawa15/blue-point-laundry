@@ -297,7 +297,7 @@ export function CreateOrderPOS() {
             >
               {it.image ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={it.image} alt={name(it)} className="h-16 w-16 rounded-lg object-contain" />
+                <img src={it.image} alt={name(it)} loading="lazy" decoding="async" className="h-16 w-16 rounded-lg object-contain" />
               ) : (
                 <span className="flex h-12 w-12 items-center justify-center rounded-full bg-brand/10 text-brand">
                   <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3h12l-1.5 4h-9L6 3Z" /><path d="M7.5 7 5 11v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9l-2.5-4" /></svg>
