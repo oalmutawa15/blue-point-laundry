@@ -435,7 +435,10 @@ export function ShopOrderActions({
           </div>
         );
       case "washing":
-        return primaryBtn(t.shop.markReadyBtn, () => markReady(order.id));
+        return primaryBtn(
+          order.fulfillment === "self_pickup" ? t.shop.markReadyPickupBtn : t.shop.markReadyBtn,
+          () => markReady(order.id),
+        );
       case "ready":
         // Self-pickup orders have no delivery-driver step: the customer collects
         // from the shop, and the shop marks it handed over.

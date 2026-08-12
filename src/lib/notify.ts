@@ -259,6 +259,30 @@ export async function notifyReadyForDelivery(
   });
 }
 
+// Self-pickup order is ready → tell the customer to come collect it.
+export async function notifyReadyForPickup(
+  orderId: string,
+  orderNo: string,
+  customerId: string | null,
+) {
+  if (!customerId) return;
+  const admin = createAdminClient();
+  const { data: c } = await admin
+    .from("profiles")
+    .select("phone")
+    .eq("id", customerId)
+    .single();
+  await record(admin, {
+    orderId,
+    recipientId: customerId,
+    recipientPhone: c?.phone ?? null,
+    template: "ready_for_pickup",
+    message:
+      `🧺 طلبك ${orderNo} جاهز للاستلام من مصبغة بلو بوينت.` +
+      `\n\n🧺 Your order ${orderNo} is ready for pickup at Blue Point Laundry.`,
+  });
+}
+
 // Daily late-orders alert → notify shop + admin staff with a summary of every
 // order still pending past its dispatch day. Sent by the scheduled job.
 export async function notifyLateOrders(

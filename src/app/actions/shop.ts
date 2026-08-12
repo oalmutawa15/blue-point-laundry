@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStaffProfile } from "@/lib/auth";
-import { notifyPickupAssigned, notifyReadyForDelivery } from "@/lib/notify";
+import { notifyPickupAssigned, notifyReadyForDelivery, notifyReadyForPickup } from "@/lib/notify";
 import { sendReceiptFor } from "@/lib/receipt";
 import { nextDispatchDate } from "@/lib/dispatch";
 import type { Database } from "@/types/database";
@@ -152,8 +152,24 @@ export async function confirmPayment(orderId: string): Promise<Ok> {
 }
 
 // washing -> ready: clothes are clean and ready for delivery / pickup.
+// For a self-pickup order, tell the customer it's ready to collect.
 export async function markReady(orderId: string): Promise<Ok> {
-  return setStatus(orderId, "ready");
+  const res = await setStatus(orderId, "ready");
+  if (!res.ok) return res;
+  after(async () => {
+    try {
+      const admin = createAdminClient();
+      const { data: o } = await admin
+        .from("orders")
+        .select("order_no, customer_id, fulfillment")
+        .eq("id", orderId)
+        .single();
+      if (o?.fulfillment === "self_pickup") {
+        await notifyReadyForPickup(orderId, o.order_no, o.customer_id);
+      }
+    } catch {}
+  });
+  return res;
 }
 
 // Override the dispatch day for an assigned order — lets the shop decide which
