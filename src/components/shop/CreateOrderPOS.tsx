@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLang } from "@/lib/i18n/LanguageProvider";
 import { filsToKwd, formatMoney } from "@/lib/money";
@@ -11,7 +11,12 @@ import {
   type FlatPriceItem,
   type PriceService,
 } from "@/lib/priceList";
-import { findCustomerByPhone, createWalkInOrder, type CustomerHit } from "@/app/actions/walkin";
+import {
+  searchCustomers,
+  createWalkInOrder,
+  type CustomerHit,
+  type WalkInPayment,
+} from "@/app/actions/walkin";
 import { PREF_GROUPS, prefLabel, biGroup, type Preferences } from "@/lib/preferences";
 import type { ItemInput } from "@/app/actions/shop";
 
@@ -24,6 +29,23 @@ const TIME_SLOTS = [
   "5:00–7:00 PM",
   "7:00–9:00 PM",
 ];
+
+// Payment methods offered at the counter, in display order.
+const PAYMENT_METHODS: WalkInPayment[] = ["cash", "knet", "credit_card", "wallet", "link"];
+
+// Bilingual/localized label for a payment method (also used in the order note).
+type Dict = ReturnType<typeof useLang>["t"];
+function PAY_LABEL(t: Dict, m: WalkInPayment): string {
+  return m === "cash"
+    ? t.pos.payCash
+    : m === "knet"
+      ? t.pos.payKnet
+      : m === "credit_card"
+        ? t.pos.payCard
+        : m === "wallet"
+          ? t.pos.payWallet
+          : t.pos.payLink;
+}
 
 type CartLine = {
   uid: number;
@@ -104,24 +126,51 @@ export function CreateOrderPOS() {
   const [customName, setCustomName] = useState("");
   const [customPrice, setCustomPrice] = useState("");
 
-  // Customer — just a phone number. If it's a known customer we auto-detect them;
-  // if not, we ask for a name (required) and create them on order.
-  const [phone, setPhone] = useState("");
+  // Customer — search by name OR phone and pick from a dropdown. If nobody
+  // matches, "add new customer" reveals name + phone fields to create them.
+  const [custQuery, setCustQuery] = useState("");
+  const [custResults, setCustResults] = useState<CustomerHit[]>([]);
+  const [searching, setSearching] = useState(false);
   const [matched, setMatched] = useState<CustomerHit | null>(null);
-  const [checked, setChecked] = useState(false); // looked this phone up yet?
+  const [addingNew, setAddingNew] = useState(false);
   const [newName, setNewName] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const searchSeq = useRef(0);
 
-  async function onPhoneChange(v: string) {
-    const digits = v.replace(/\D/g, "").slice(0, 8);
-    setPhone(digits);
-    setMatched(null);
-    setChecked(false);
-    setNewName("");
-    if (digits.length === 8) {
-      const c = await findCustomerByPhone(digits);
-      setMatched(c);
-      setChecked(true);
+  // Debounced search — runs whenever the query changes and no customer is picked.
+  useEffect(() => {
+    if (matched) return;
+    const q = custQuery.trim();
+    if (q.length < 2) {
+      setCustResults([]);
+      setSearching(false);
+      return;
     }
+    setSearching(true);
+    const seq = ++searchSeq.current;
+    const timer = setTimeout(async () => {
+      const rows = await searchCustomers(q);
+      if (seq === searchSeq.current) {
+        setCustResults(rows);
+        setSearching(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [custQuery, matched]);
+
+  function pickCustomer(c: CustomerHit) {
+    setMatched(c);
+    setCustResults([]);
+    setAddingNew(false);
+    setNewName("");
+    setNewPhone("");
+  }
+
+  function clearCustomer() {
+    setMatched(null);
+    setCustQuery("");
+    setCustResults([]);
+    setAddingNew(false);
   }
 
   const [deliveryDate, setDeliveryDate] = useState("");
@@ -129,6 +178,8 @@ export function CreateOrderPOS() {
   const [fast, setFast] = useState(false);
   // How the finished order reaches the customer — exactly one, required.
   const [fulfillment, setFulfillment] = useState<"delivery" | "self_pickup" | null>(null);
+  // How the order is paid — exactly one, required.
+  const [payment, setPayment] = useState<WalkInPayment | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -173,21 +224,20 @@ export function CreateOrderPOS() {
     setError(null);
     if (cart.length === 0) return setError(t.pos.noItems);
     if (!fulfillment) return setError(t.pos.needFulfillment);
+    if (!payment) return setError(t.pos.needPayment);
 
-    // Resolve the customer from the single phone field:
-    //  - 8-digit phone required
-    //  - known number → use that customer
-    //  - unknown number → name is required, and we create them on order
+    // Resolve the customer:
+    //  - a picked (existing) customer → use them
+    //  - otherwise "add new customer" needs a name + an 8-digit phone
     let customerId: string | undefined;
     let newCustomer: { name: string; phone: string } | undefined;
-    if (phone.length !== 8) {
-      return setError(t.pos.needPhone);
-    } else if (matched) {
+    if (matched) {
       customerId = matched.id;
-    } else if (newName.trim()) {
-      newCustomer = { name: newName.trim(), phone };
     } else {
-      return setError(t.pos.nameRequired);
+      const phone = newPhone.replace(/\D/g, "");
+      if (!newName.trim()) return setError(t.pos.nameRequired);
+      if (phone.length !== 8) return setError(t.pos.needPhone);
+      newCustomer = { name: newName.trim(), phone };
     }
 
     const orderItems: ItemInput[] = cart.map((l) => ({
@@ -200,6 +250,7 @@ export function CreateOrderPOS() {
     const noteParts: string[] = [];
     if (fast) noteParts.push(t.pos.fast);
     noteParts.push(fulfillment === "self_pickup" ? t.pos.selfPickup : t.pos.delivery);
+    noteParts.push(PAY_LABEL(t, payment));
     if (timeSlot) noteParts.push(`${t.pos.readyBy}: ${timeSlot}`);
 
     setBusy(true);
@@ -209,6 +260,7 @@ export function CreateOrderPOS() {
       items: orderItems,
       deliveryDate: deliveryDate || null,
       fulfillment,
+      paymentMethod: payment,
       note: noteParts.join(" • ") || undefined,
     });
     setBusy(false);
@@ -334,24 +386,25 @@ export function CreateOrderPOS() {
           )}
         </div>
 
-        {/* Customer — one phone field; known number auto-fills, new number asks a name */}
+        {/* Customer — search by name or phone, pick from the dropdown, or add new */}
         <div className="space-y-2 rounded-2xl bg-card p-3 shadow-sm">
-          <input
-            value={phone}
-            onChange={(e) => onPhoneChange(e.target.value)}
-            placeholder={t.pos.customerPhone}
-            inputMode="numeric"
-            dir="ltr"
-            className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-brand"
-          />
-
-          {/* Known customer → show their name + saved preferences */}
-          {checked && matched && (
+          {matched ? (
+            // A customer is picked → show them + saved preferences, with "change".
             <>
-              <p className="flex items-center gap-1.5 text-sm font-semibold text-success">
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m20 6-11 11-5-5" /></svg>
-                {matched.full_name || matched.phone}
-              </p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="flex items-center gap-1.5 text-sm font-semibold text-success">
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m20 6-11 11-5-5" /></svg>
+                  <span>
+                    {matched.full_name || matched.phone}
+                    <span className="ms-1 text-xs font-normal text-muted-foreground" dir="ltr">
+                      {matched.phone}
+                    </span>
+                  </span>
+                </p>
+                <button type="button" onClick={clearCustomer} className="text-xs font-semibold text-brand">
+                  {t.pos.change}
+                </button>
+              </div>
               {(() => {
                 const prefs = (matched.preferences ?? {}) as Preferences;
                 const rows = PREF_GROUPS.map((g) => ({ label: biGroup(g), value: prefLabel(g.key, prefs[g.key]) })).filter((r) => r.value);
@@ -370,18 +423,75 @@ export function CreateOrderPOS() {
                 );
               })()}
             </>
-          )}
-
-          {/* Unknown number → require a name */}
-          {checked && !matched && (
-            <div>
+          ) : addingNew ? (
+            // Adding a brand-new customer → name + phone, both required.
+            <div className="space-y-2">
               <input
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder={t.pos.customerName}
                 className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-brand"
               />
-              <p className="mt-1 text-xs text-muted-foreground">{t.pos.newCustomerHint}</p>
+              <input
+                value={newPhone}
+                onChange={(e) => setNewPhone(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                placeholder={t.pos.customerPhone}
+                inputMode="numeric"
+                dir="ltr"
+                className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-brand"
+              />
+              <button
+                type="button"
+                onClick={() => setAddingNew(false)}
+                className="text-xs font-semibold text-muted-foreground"
+              >
+                {t.common.back}
+              </button>
+            </div>
+          ) : (
+            // Search box + live results dropdown.
+            <div className="space-y-2">
+              <input
+                value={custQuery}
+                onChange={(e) => setCustQuery(e.target.value)}
+                placeholder={t.pos.searchOrAdd}
+                className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-brand"
+              />
+              {custQuery.trim().length >= 2 && (
+                <div className="overflow-hidden rounded-lg border border-border">
+                  {searching && custResults.length === 0 ? (
+                    <p className="px-3 py-2 text-xs text-muted-foreground">{t.common.loading}</p>
+                  ) : custResults.length > 0 ? (
+                    custResults.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => pickCustomer(c)}
+                        className="flex w-full items-center justify-between gap-2 border-b border-border px-3 py-2 text-start text-sm last:border-b-0 hover:bg-muted"
+                      >
+                        <span className="font-semibold">{c.full_name || "—"}</span>
+                        <span className="text-xs text-muted-foreground" dir="ltr">{c.phone}</span>
+                      </button>
+                    ))
+                  ) : (
+                    <p className="px-3 py-2 text-xs text-muted-foreground">{t.pos.noResults}</p>
+                  )}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setAddingNew(true);
+                  // Seed the name/phone from whatever was typed.
+                  const q = custQuery.trim();
+                  if (/^\d{1,8}$/.test(q)) setNewPhone(q);
+                  else if (q) setNewName(q);
+                }}
+                className="flex items-center gap-1.5 text-sm font-bold text-brand"
+              >
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
+                {t.pos.addNewCustomer}
+              </button>
             </div>
           )}
         </div>
@@ -429,6 +539,32 @@ export function CreateOrderPOS() {
                   );
                 })}
               </div>
+            </div>
+
+            {/* Payment method — exactly one, required. "link" auto-sends the
+                customer an online payment link; "wallet" deducts their balance. */}
+            <div>
+              <p className="mb-1.5 text-xs font-semibold text-muted-foreground">{t.pos.payment}</p>
+              <div className="grid grid-cols-3 gap-2">
+                {PAYMENT_METHODS.map((m) => {
+                  const on = payment === m;
+                  return (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setPayment(m)}
+                      className={`rounded-xl border px-2 py-2.5 text-center text-xs font-bold transition-colors ${
+                        on ? "border-brand bg-brand-soft text-brand" : "border-border text-foreground"
+                      }`}
+                    >
+                      {PAY_LABEL(t, m)}
+                    </button>
+                  );
+                })}
+              </div>
+              {payment === "link" && (
+                <p className="mt-1.5 text-[11px] leading-tight text-muted-foreground">{t.pos.payLinkHint}</p>
+              )}
             </div>
 
             <div>

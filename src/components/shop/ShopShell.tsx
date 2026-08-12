@@ -8,7 +8,7 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { signOut } from "@/app/actions/auth";
 import type { ReactNode } from "react";
 
-type IconName = "orders" | "create" | "customers";
+type IconName = "orders" | "create" | "customers" | "schedules";
 
 function NavIcon({ name }: { name: IconName }) {
   const c = "h-6 w-6";
@@ -19,6 +19,10 @@ function NavIcon({ name }: { name: IconName }) {
   if (name === "customers")
     return (
       <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+    );
+  if (name === "schedules")
+    return (
+      <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01" /></svg>
     );
   return (
     <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M12 8v8M8 12h8" /></svg>
@@ -34,6 +38,7 @@ export function ShopShell({ children }: { children: ReactNode }) {
     { href: "/shop", label: t.nav.orders, icon: "orders" as const },
     { href: "/shop/create", label: t.pos.title, icon: "create" as const },
     { href: "/shop/customers", label: t.customers.title, icon: "customers" as const },
+    { href: "/shop/schedules", label: t.shopSchedule.title, icon: "schedules" as const },
   ];
   const isActive = (href: string) =>
     href === "/shop"
@@ -108,7 +113,7 @@ export function ShopShell({ children }: { children: ReactNode }) {
 
       {/* Mobile bottom navigation */}
       <nav className="fixed bottom-0 left-0 z-20 w-full border-t border-border bg-card lg:hidden">
-        <div className="mx-auto grid max-w-md grid-cols-3">
+        <div className="mx-auto grid max-w-md grid-cols-4">
           {nav.map((item) => (
             <Link
               key={item.href}

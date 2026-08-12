@@ -10,7 +10,7 @@ type SupabaseAdmin = ReturnType<typeof createAdminClient>;
 async function record(
   admin: SupabaseAdmin,
   args: {
-    orderId: string;
+    orderId: string | null;
     recipientId: string | null;
     recipientPhone: string | null;
     template: string;
@@ -217,6 +217,144 @@ export async function notifyReceipt(
   }
 
   return { ok: true as const, phone: c?.phone ?? null };
+}
+
+// Walk-in paid by "link" → send the customer a secure link to pay THIS order
+// online. `payUrl` is the tamper-proof per-order payment page (the amount is
+// fixed server-side); we append the customer's language.
+export async function notifyPaymentLink(
+  orderId: string,
+  orderNo: string,
+  customerId: string | null,
+  payUrl: string,
+  amountFils: number,
+) {
+  if (!customerId) return;
+  const admin = createAdminClient();
+  const { data: c } = await admin
+    .from("profiles")
+    .select("phone, preferences")
+    .eq("id", customerId)
+    .single();
+  const prefs = c?.preferences;
+  const lang =
+    prefs && typeof prefs === "object" && !Array.isArray(prefs) &&
+    (prefs as Record<string, unknown>).lang === "en"
+      ? "en"
+      : "ar";
+  const link = `${payUrl}${payUrl.includes("?") ? "&" : "?"}lang=${lang}`;
+  const amount = filsToKwd(amountFils);
+  const message =
+    lang === "en"
+      ? `💳 Your order ${orderNo} at Blue Point Laundry is ${amount} KWD.\nPay securely online here:\n${link}`
+      : `💳 قيمة طلبك ${orderNo} في مصبغة بلو بوينت هي ${amount} د.ك.\nيمكنك الدفع بأمان أونلاين من هنا:\n${link}`;
+  await record(admin, {
+    orderId,
+    recipientId: customerId,
+    recipientPhone: c?.phone ?? null,
+    template: "payment_link",
+    message,
+  });
+}
+
+// Order paid online via its payment link → confirm to the customer and tell the
+// shop the order is settled.
+export async function notifyOrderPaid(
+  orderId: string,
+  orderNo: string,
+  customerId: string | null,
+  amountFils: number,
+) {
+  const admin = createAdminClient();
+  const amount = filsToKwd(amountFils);
+  if (customerId) {
+    const { data: c } = await admin
+      .from("profiles")
+      .select("phone")
+      .eq("id", customerId)
+      .single();
+    await record(admin, {
+      orderId,
+      recipientId: customerId,
+      recipientPhone: c?.phone ?? null,
+      template: "order_paid",
+      message:
+        `✅ تم استلام دفعتك لطلب ${orderNo} بمبلغ ${amount} د.ك. شكراً لك — مصبغة بلو بوينت.` +
+        `\n\n✅ We've received your payment for order ${orderNo} (${amount} KWD). Thank you — Blue Point Laundry.`,
+    });
+  }
+  // Tell the shop the order is now paid.
+  const { data: staff } = await admin
+    .from("profiles")
+    .select("id, phone")
+    .in("role", ["shop", "admin"]);
+  for (const s of staff ?? []) {
+    await record(admin, {
+      orderId,
+      recipientId: s.id,
+      recipientPhone: s.phone,
+      template: "order_paid_shop",
+      message:
+        `💳 تم دفع الطلب ${orderNo} (${amount} د.ك) عبر رابط الدفع.` +
+        `\n\n💳 Order ${orderNo} (${amount} KWD) has been paid via the payment link.`,
+    });
+  }
+}
+
+// Order payment failed/declined → let the customer know it did not go through.
+export async function notifyOrderPaymentFailed(
+  orderId: string,
+  orderNo: string,
+  customerId: string | null,
+) {
+  if (!customerId) return;
+  const admin = createAdminClient();
+  const { data: c } = await admin
+    .from("profiles")
+    .select("phone")
+    .eq("id", customerId)
+    .single();
+  await record(admin, {
+    orderId,
+    recipientId: customerId,
+    recipientPhone: c?.phone ?? null,
+    template: "order_payment_failed",
+    message:
+      `❌ لم تتم عملية الدفع لطلب ${orderNo} ولم يُخصم أي مبلغ. يمكنك المحاولة مرة أخرى من نفس الرابط.` +
+      `\n\n❌ The payment for order ${orderNo} did not go through and nothing was charged. You can try again from the same link.`,
+  });
+}
+
+// A scheduled pickup couldn't be placed because the wallet balance is 0 → nudge
+// the customer to top up so future scheduled pickups go through.
+export async function notifyScheduledPickupSkipped(
+  customerId: string,
+  origin: string,
+) {
+  const admin = createAdminClient();
+  const { data: c } = await admin
+    .from("profiles")
+    .select("phone, preferences")
+    .eq("id", customerId)
+    .single();
+  const prefs = c?.preferences;
+  const lang =
+    prefs && typeof prefs === "object" && !Array.isArray(prefs) &&
+    (prefs as Record<string, unknown>).lang === "en"
+      ? "en"
+      : "ar";
+  const link = `${origin}/credit`;
+  const message =
+    lang === "en"
+      ? `⏰ Your scheduled pickup today couldn't be placed because your wallet balance is empty. Top up here and we'll pick up on your next scheduled day:\n${link}`
+      : `⏰ لم نتمكن من تنفيذ استلامك المجدول اليوم لأن رصيد محفظتك فارغ. اشحن رصيدك من هنا وسنستلم في يومك المجدول القادم:\n${link}`;
+  await record(admin, {
+    orderId: null,
+    recipientId: customerId,
+    recipientPhone: c?.phone ?? null,
+    template: "scheduled_pickup_skipped",
+    message,
+  });
 }
 
 // New order placed → alert all shop staff.

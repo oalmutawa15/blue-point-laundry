@@ -305,6 +305,7 @@ export type Database = {
           fulfillment: string
           id: string
           order_no: string
+          payment_method: string | null
           pickup_address_id: string | null
           pickup_driver_id: string | null
           piece_count: number | null
@@ -330,6 +331,7 @@ export type Database = {
           fulfillment?: string
           id?: string
           order_no?: string
+          payment_method?: string | null
           pickup_address_id?: string | null
           pickup_driver_id?: string | null
           piece_count?: number | null
@@ -355,6 +357,7 @@ export type Database = {
           fulfillment?: string
           id?: string
           order_no?: string
+          payment_method?: string | null
           pickup_address_id?: string | null
           pickup_driver_id?: string | null
           piece_count?: number | null
@@ -442,6 +445,8 @@ export type Database = {
           credit_fils: number | null
           customer_id: string
           id: string
+          kind: string
+          order_id: string | null
           paid_at: string | null
           provider: string
           provider_ref: string | null
@@ -453,6 +458,8 @@ export type Database = {
           credit_fils?: number | null
           customer_id: string
           id?: string
+          kind?: string
+          order_id?: string | null
           paid_at?: string | null
           provider?: string
           provider_ref?: string | null
@@ -464,6 +471,8 @@ export type Database = {
           credit_fils?: number | null
           customer_id?: string
           id?: string
+          kind?: string
+          order_id?: string | null
           paid_at?: string | null
           provider?: string
           provider_ref?: string | null
@@ -478,6 +487,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      recurring_schedules: {
+        Row: {
+          active: boolean
+          address_id: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          driver_id: string | null
+          id: string
+          kind: string
+          last_run_date: string | null
+          weekdays: number[]
+        }
+        Insert: {
+          active?: boolean
+          address_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          driver_id?: string | null
+          id?: string
+          kind: string
+          last_run_date?: string | null
+          weekdays?: number[]
+        }
+        Update: {
+          active?: boolean
+          address_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          driver_id?: string | null
+          id?: string
+          kind?: string
+          last_run_date?: string | null
+          weekdays?: number[]
+        }
+        Relationships: []
       }
       profiles: {
         Row: {

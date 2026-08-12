@@ -24,6 +24,21 @@ export function HomeView({
     <div className="space-y-5">
       <RequestPickup addresses={addresses} />
 
+      {/* Weekly pickup schedule entry point */}
+      <Link
+        href="/schedule"
+        className="flex items-center gap-3 rounded-2xl bg-card p-4 shadow-sm"
+      >
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand">
+          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01" /></svg>
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold">{t.schedule.manage}</p>
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">{t.schedule.subtitle}</p>
+        </div>
+        <svg className="h-5 w-5 shrink-0 text-muted-foreground rtl:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+      </Link>
+
       {/* Current order status */}
       <Link
         href={activeOrder ? `/orders/${activeOrder.id}` : "/orders"}

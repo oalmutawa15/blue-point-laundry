@@ -22,3 +22,14 @@ export function kuwaitDate(days = 0): string {
 export function nextDispatchDate(): string {
   return kuwaitDate(1);
 }
+
+// Today's weekday in Kuwait as a number: 0 = Sunday .. 6 = Saturday (matching
+// JS getDay). Used to fire recurring weekly schedules on the right day.
+export function kuwaitWeekday(): number {
+  const wd = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Kuwait",
+    weekday: "short",
+  }).format(new Date());
+  const map: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  return map[wd] ?? 0;
+}

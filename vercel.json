@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/late-orders",
       "schedule": "5 21 * * *"
+    },
+    {
+      "path": "/api/cron/schedules",
+      "schedule": "0 2 * * *"
     }
   ]
 }

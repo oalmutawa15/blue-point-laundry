@@ -1,12 +1,19 @@
 "use server";
 
 import { after } from "next/server";
+import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { emailForPhone, passwordForPhone, getStaffProfile } from "@/lib/auth";
 import { normalizeKwPhone } from "@/lib/phone";
 import { sendReceiptFor } from "@/lib/receipt";
+import { notifyPaymentLink } from "@/lib/notify";
 import type { ItemInput } from "./shop";
+
+// How a walk-in order is paid. Cash/KNET/card are settled at the counter; wallet
+// deducts from the customer's website balance (debt allowed); link sends the
+// customer an online payment link and leaves the order unpaid until they pay.
+export type WalkInPayment = "cash" | "knet" | "credit_card" | "wallet" | "link";
 
 import type { Json } from "@/types/database";
 
@@ -26,7 +33,7 @@ export async function searchCustomers(query: string): Promise<CustomerHit[]> {
   const admin = createAdminClient();
   const { data } = await admin
     .from("profiles")
-    .select("id, full_name, phone")
+    .select("id, full_name, phone, preferences")
     .eq("role", "customer")
     .or(`full_name.ilike.%${q}%,phone.ilike.%${q}%`)
     .limit(10);
@@ -93,6 +100,7 @@ export async function createWalkInOrder(input: {
   items: ItemInput[];
   deliveryDate?: string | null;
   fulfillment?: "delivery" | "self_pickup";
+  paymentMethod?: WalkInPayment;
   note?: string;
 }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   if (!(await getStaffProfile())) return { ok: false, error: "forbidden" };
@@ -108,6 +116,10 @@ export async function createWalkInOrder(input: {
   const admin = createAdminClient();
   const pieces = input.items.reduce((s, i) => s + i.qty, 0);
   const total = input.items.reduce((s, i) => s + i.qty * i.unit_price_fils, 0);
+  const method: WalkInPayment = input.paymentMethod ?? "cash";
+  // "link" is paid later online → the order is not settled yet. Every other
+  // method (cash/KNET/card/wallet) settles the order now.
+  const charged = method !== "link";
 
   const { data: order, error } = await admin
     .from("orders")
@@ -115,14 +127,15 @@ export async function createWalkInOrder(input: {
       customer_id: cust.id,
       pickup_address_id: null,
       status: "washing",
-      charged: true, // paid at the counter
+      charged,
+      payment_method: method,
       piece_count: pieces,
       price_fils: total,
       delivery_date: input.deliveryDate ?? null,
       fulfillment: input.fulfillment === "self_pickup" ? "self_pickup" : "delivery",
       staff_note: input.note?.trim() || null,
     })
-    .select("id, order_no")
+    .select("id, order_no, receipt_token")
     .single();
   if (error) return { ok: false, error: error.message };
 
@@ -137,11 +150,45 @@ export async function createWalkInOrder(input: {
   );
   if (itemsErr) return { ok: false, error: itemsErr.message };
 
+  // "Credit in the website" → deduct the total from the customer's wallet now
+  // (debt allowed, mirroring the washing-charge trigger for online orders).
+  if (method === "wallet" && total > 0) {
+    await admin.from("credit_transactions").insert({
+      customer_id: cust.id,
+      amount_fils: -total,
+      type: "order_charge",
+      order_id: order.id,
+      note: `Order ${order.order_no}`,
+    });
+    const { data: prof } = await admin
+      .from("profiles")
+      .select("credit_fils")
+      .eq("id", cust.id)
+      .single();
+    await admin
+      .from("profiles")
+      .update({ credit_fils: (prof?.credit_fils ?? 0) - total })
+      .eq("id", cust.id);
+  }
+
+  // The site origin — used to build the online payment link for "link" orders.
+  const origin = await (async () => {
+    const h = await headers();
+    const host = h.get("host") ?? "";
+    const proto = h.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
+    return host ? `${proto}://${host}` : "";
+  })();
+
   // The receipt is "published" the moment a walk-in order is created → send the
-  // customer their receipt link over WhatsApp (in the background).
+  // customer their receipt link over WhatsApp (in the background). When paid by
+  // link, also send a secure per-order payment link (amount fixed server-side).
   after(async () => {
     try {
       await sendReceiptFor(order.id);
+      if (method === "link" && origin) {
+        const payUrl = `${origin}/pay/order/${order.id}?t=${order.receipt_token}`;
+        await notifyPaymentLink(order.id, order.order_no, cust.id, payUrl, total);
+      }
     } catch {}
   });
 

@@ -1,13 +1,67 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useLang } from "@/lib/i18n/LanguageProvider";
 import { OrderStatusBadge } from "./OrderStatusBadge";
 import { OrderProgress } from "./OrderProgress";
 import { useRealtimeOrders } from "@/lib/useRealtimeOrders";
 import { formatMoney } from "@/lib/money";
 import { formatAddress } from "@/lib/address";
+import { cancelMyPickup } from "@/app/actions/orders";
+import { PICKUP_CANCEL_WINDOW_MS } from "@/lib/pickup";
 import type { Tables } from "@/types/database";
+
+// The customer can cancel their own pickup within one hour of requesting it,
+// while it's still uncollected. Shows a live countdown of the remaining window.
+function CancelPickup({ order }: { order: Tables<"orders"> }) {
+  const { t, lang } = useLang();
+  const router = useRouter();
+  const [now, setNow] = useState(() => Date.now());
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const cancellable = order.status === "new" || order.status === "pickup_requested";
+  const msLeft = new Date(order.created_at).getTime() + PICKUP_CANCEL_WINDOW_MS - now;
+  if (!cancellable || msLeft <= 0) return null;
+  const minsLeft = Math.ceil(msLeft / 60000);
+
+  async function cancel() {
+    if (!window.confirm(t.schedule.cancelConfirm)) return;
+    setBusy(true);
+    setError(null);
+    const res = await cancelMyPickup(order.id);
+    setBusy(false);
+    if (!res.ok) {
+      setError(t.schedule.cancelFailed);
+      return;
+    }
+    router.refresh();
+  }
+
+  return (
+    <div className="rounded-2xl bg-card p-4 shadow-sm">
+      <p className="text-xs text-muted-foreground">
+        {t.schedule.cancelWindow} · {minsLeft} {lang === "ar" ? "دقيقة" : "min"}
+      </p>
+      <button
+        type="button"
+        onClick={cancel}
+        disabled={busy}
+        className="mt-2 w-full rounded-xl border border-danger px-4 py-2.5 text-sm font-bold text-danger disabled:opacity-50"
+      >
+        {busy ? t.common.loading : t.schedule.cancelPickup}
+      </button>
+      {error && <p className="mt-2 text-sm font-semibold text-danger">{error}</p>}
+    </div>
+  );
+}
 
 export function OrderDetail({
   order,
@@ -98,6 +152,9 @@ export function OrderDetail({
           />
         </div>
       )}
+
+      {/* Cancel within the 1-hour window */}
+      <CancelPickup order={order} />
 
       {/* Full stage-by-stage progress — same stages the shop works through */}
       <OrderProgress status={order.status} events={events} fulfillment={order.fulfillment} />

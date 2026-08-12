@@ -110,23 +110,33 @@ async function upaymentsPaymentState(idOrSession: string): Promise<PaymentState>
       };
       const tx = json.data?.transaction;
       if (!tx) continue;
-      const result = (tx.result ?? "").toUpperCase();
-      const status = (tx.status ?? "").toLowerCase();
+      // `result` is the AUTHORITATIVE payment outcome. Per UPayments, a real
+      // payment is `result: "CAPTURED"`. The `status` field ("done"/"success")
+      // only means the transaction RECORD is complete — it is NOT proof money was
+      // captured, so we must never credit a wallet on `status` alone (doing so
+      // credited orders that reached the gateway but were never paid).
+      const result = (tx.result ?? "").toUpperCase().replace(/[_-]/g, " ").trim();
+      const status = (tx.status ?? "").toLowerCase().trim();
+      console.log(`[upayments status] result="${result}" status="${status}"`);
 
-      if (result === "CAPTURED" || ["success", "done", "captured", "paid"].includes(status)) {
-        return "paid";
-      }
-      // Only DEFINITIVE failures count as failed. "NOT CAPTURED" is a transient
-      // pre-capture state (capture often lands via the webhook a moment later),
-      // so it stays pending and we keep polling.
+      // Credit ONLY on a genuine capture.
+      if (result.includes("CAPTURED") && !result.includes("NOT")) return "paid";
+
+      // Definitive failures. ("NOT CAPTURED" is NOT here — it's a transient
+      // pre-capture state that stays pending until the capture lands or it fails.)
       if (
         result.includes("FAIL") ||
         result.includes("DECLIN") ||
         result.includes("CANCEL") ||
+        result.includes("EXPIRE") ||
+        result.includes("VOID") ||
+        result.includes("ERROR") ||
         ["failed", "declined", "canceled", "cancelled", "error", "expired", "voided"].includes(status)
       ) {
         return "failed";
       }
+      // Everything else (incl. "NOT CAPTURED", empty result, "done" without a
+      // capture) → not settled yet. Keep polling; never credit.
       return "pending";
     } catch {
       // try next form
@@ -164,16 +174,54 @@ export async function finalizeUpayments(
       .from("payments")
       .update({ status: "paid", paid_at: new Date().toISOString() })
       .eq("id", paymentId);
-    await admin.rpc("wallet_topup", {
-      p_customer: payment.customer_id,
-      p_amount: payment.credit_fils ?? payment.amount_fils,
-      p_reference: payment.id,
-      p_note: "UPayments top-up",
-    });
+
+    if (payment.order_id) {
+      // Per-order payment link → mark the ORDER as paid (settled online). This is
+      // NOT a wallet top-up, so the wallet balance is untouched. Idempotent: only
+      // flip + notify when it wasn't already charged.
+      const { data: order } = await admin
+        .from("orders")
+        .select("order_no, customer_id, charged")
+        .eq("id", payment.order_id)
+        .single();
+      if (order && !order.charged) {
+        await admin.from("orders").update({ charged: true }).eq("id", payment.order_id);
+        try {
+          const { notifyOrderPaid } = await import("@/lib/notify");
+          await notifyOrderPaid(
+            payment.order_id,
+            order.order_no,
+            order.customer_id,
+            payment.amount_fils,
+          );
+        } catch {}
+      }
+    } else {
+      // Wallet top-up → credit the wallet (idempotent by reference).
+      await admin.rpc("wallet_topup", {
+        p_customer: payment.customer_id,
+        p_amount: payment.credit_fils ?? payment.amount_fils,
+        p_reference: payment.id,
+        p_note: "UPayments top-up",
+      });
+    }
     return "paid";
   }
   if (state === "failed") {
     await admin.from("payments").update({ status: "failed" }).eq("id", paymentId);
+    if (payment.order_id) {
+      try {
+        const { data: order } = await admin
+          .from("orders")
+          .select("order_no, customer_id")
+          .eq("id", payment.order_id)
+          .single();
+        if (order) {
+          const { notifyOrderPaymentFailed } = await import("@/lib/notify");
+          await notifyOrderPaymentFailed(payment.order_id, order.order_no, order.customer_id);
+        }
+      } catch {}
+    }
     return "failed";
   }
   // Still processing — don't mark it failed; the webhook (or a retry) will settle it.

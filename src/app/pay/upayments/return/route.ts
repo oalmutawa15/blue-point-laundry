@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { finalizeUpayments } from "@/lib/upayments";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -26,5 +27,16 @@ export async function GET(req: NextRequest) {
     // ignore — the result screen polls regardless
   }
 
-  return NextResponse.redirect(new URL(`/pay/result?payment=${paymentId}`, req.url));
+  // Route to the right result screen: an order-payment link lands on the order
+  // result page; a wallet top-up lands on the wallet result page.
+  const admin = createAdminClient();
+  const { data: payment } = await admin
+    .from("payments")
+    .select("order_id")
+    .eq("id", paymentId)
+    .maybeSingle();
+  const dest = payment?.order_id
+    ? `/pay/order/${payment.order_id}/result?payment=${paymentId}`
+    : `/pay/result?payment=${paymentId}`;
+  return NextResponse.redirect(new URL(dest, req.url));
 }
