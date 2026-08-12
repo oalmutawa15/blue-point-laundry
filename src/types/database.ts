@@ -450,7 +450,9 @@ export type Database = {
           paid_at: string | null
           provider: string
           provider_ref: string | null
+          provider_result: string | null
           status: Database["public"]["Enums"]["payment_status"]
+          verified_at: string | null
         }
         Insert: {
           amount_fils: number
@@ -463,7 +465,9 @@ export type Database = {
           paid_at?: string | null
           provider?: string
           provider_ref?: string | null
+          provider_result?: string | null
           status?: Database["public"]["Enums"]["payment_status"]
+          verified_at?: string | null
         }
         Update: {
           amount_fils?: number
@@ -476,7 +480,9 @@ export type Database = {
           paid_at?: string | null
           provider?: string
           provider_ref?: string | null
+          provider_result?: string | null
           status?: Database["public"]["Enums"]["payment_status"]
+          verified_at?: string | null
         }
         Relationships: [
           {

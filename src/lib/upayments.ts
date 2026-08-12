@@ -86,12 +86,15 @@ export async function upaymentsCreateCharge(
 }
 
 type PaymentState = "paid" | "failed" | "pending";
+// The verified state plus the RAW result string UPayments returned, so we can
+// store proof (e.g. "CAPTURED") on the payment when we settle it.
+type StateResult = { state: PaymentState; raw: string };
 
 // Ask UPayments for the real transaction state. Crucially this distinguishes a
 // *definitive* failure from "not captured yet" — capture often lags the browser
 // redirect by a second or two, and treating that gap as a failure was showing
 // customers "Payment failed" while the webhook credited them moments later.
-async function upaymentsPaymentState(idOrSession: string): Promise<PaymentState> {
+async function upaymentsPaymentState(idOrSession: string): Promise<StateResult> {
   const urls = [
     `${BASE}/get-payment-status/${encodeURIComponent(idOrSession)}`,
     `${BASE}/get-payment-status?session_id=${encodeURIComponent(idOrSession)}`,
@@ -118,9 +121,10 @@ async function upaymentsPaymentState(idOrSession: string): Promise<PaymentState>
       const result = (tx.result ?? "").toUpperCase().replace(/[_-]/g, " ").trim();
       const status = (tx.status ?? "").toLowerCase().trim();
       console.log(`[upayments status] result="${result}" status="${status}"`);
+      const raw = `result=${result || "?"};status=${status || "?"}`;
 
       // Credit ONLY on a genuine capture.
-      if (result.includes("CAPTURED") && !result.includes("NOT")) return "paid";
+      if (result.includes("CAPTURED") && !result.includes("NOT")) return { state: "paid", raw };
 
       // Definitive failures. ("NOT CAPTURED" is NOT here — it's a transient
       // pre-capture state that stays pending until the capture lands or it fails.)
@@ -133,16 +137,16 @@ async function upaymentsPaymentState(idOrSession: string): Promise<PaymentState>
         result.includes("ERROR") ||
         ["failed", "declined", "canceled", "cancelled", "error", "expired", "voided"].includes(status)
       ) {
-        return "failed";
+        return { state: "failed", raw };
       }
       // Everything else (incl. "NOT CAPTURED", empty result, "done" without a
       // capture) → not settled yet. Keep polling; never credit.
-      return "pending";
+      return { state: "pending", raw };
     } catch {
       // try next form
     }
   }
-  return "pending";
+  return { state: "pending", raw: "unreachable" };
 }
 
 // Idempotently finalize a payment: verify with UPayments, then credit the wallet
@@ -163,8 +167,11 @@ export async function finalizeUpayments(
   if (!payment.provider_ref) return "pending";
 
   let state: PaymentState = "pending";
+  let raw = "";
   try {
-    state = await upaymentsPaymentState(payment.provider_ref);
+    const r = await upaymentsPaymentState(payment.provider_ref);
+    state = r.state;
+    raw = r.raw;
   } catch {
     state = "pending";
   }
@@ -172,10 +179,16 @@ export async function finalizeUpayments(
   if (state === "paid") {
     // Atomically claim the payment: only the finalize that flips it from pending
     // proceeds to credit + notify. Prevents a poll + webhook race from crediting
-    // or messaging twice.
+    // or messaging twice. We also record the gateway's own result (raw) as proof
+    // of a genuine capture — so a real credit is always auditable.
     const { data: claimed } = await admin
       .from("payments")
-      .update({ status: "paid", paid_at: new Date().toISOString() })
+      .update({
+        status: "paid",
+        paid_at: new Date().toISOString(),
+        verified_at: new Date().toISOString(),
+        provider_result: raw,
+      })
       .eq("id", paymentId)
       .eq("status", "pending")
       .select("id");
@@ -222,7 +235,10 @@ export async function finalizeUpayments(
     return "paid";
   }
   if (state === "failed") {
-    await admin.from("payments").update({ status: "failed" }).eq("id", paymentId);
+    await admin
+      .from("payments")
+      .update({ status: "failed", verified_at: new Date().toISOString(), provider_result: raw })
+      .eq("id", paymentId);
     if (payment.order_id) {
       try {
         const { data: order } = await admin
