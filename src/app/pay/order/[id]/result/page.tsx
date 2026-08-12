@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { ReceiptNotFound } from "@/components/ReceiptNotFound";
 import { OrderPaymentResult } from "@/components/customer/OrderPaymentResult";
 import { LanguageProvider } from "@/lib/i18n/LanguageProvider";
+import { parsePaymentId } from "@/lib/paymentId";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,8 @@ export default async function OrderPayResultPage({
 }) {
   const { id } = await params;
   const { payment, lang } = await searchParams;
-  if (!payment) redirect("/home");
+  const paymentId = parsePaymentId(payment);
+  if (!paymentId) redirect("/home");
 
   const admin = createAdminClient();
   const { data: order } = await admin
@@ -42,7 +44,7 @@ export default async function OrderPayResultPage({
   return (
     <LanguageProvider initialLang={initialLang}>
       <OrderPaymentResult
-        paymentId={payment}
+        paymentId={paymentId}
         orderId={order.id}
         orderNo={order.order_no}
         token={order.receipt_token}

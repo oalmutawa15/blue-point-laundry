@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { finalizeUpayments } from "@/lib/upayments";
+import { parsePaymentId } from "@/lib/paymentId";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +48,7 @@ async function resolvePaymentId(
   req: NextRequest,
   body: WebhookFields,
 ): Promise<string | null> {
-  const fromQuery = req.nextUrl.searchParams.get("payment");
+  const fromQuery = parsePaymentId(req.nextUrl.searchParams.get("payment"));
   if (fromQuery) return fromQuery;
 
   const admin = createAdminClient();

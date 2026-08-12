@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { finalizeUpayments } from "@/lib/upayments";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { parsePaymentId } from "@/lib/paymentId";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +12,8 @@ export const dynamic = "force-dynamic";
 // screen then fast-polls /api/payment-status (which finalizes idempotently) and
 // resolves to approved/failed within seconds.
 export async function GET(req: NextRequest) {
-  const paymentId = req.nextUrl.searchParams.get("payment");
+  // Sanitize: UPayments may append `?payment_id=...`, corrupting our value.
+  const paymentId = parsePaymentId(req.nextUrl.searchParams.get("payment"));
   if (!paymentId) return NextResponse.redirect(new URL("/credit", req.url));
 
   // Give the payment a short head start to settle BEFORE the result screen loads,

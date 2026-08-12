@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { finalizeUpayments } from "@/lib/upayments";
+import { parsePaymentId } from "@/lib/paymentId";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,7 @@ const NO_STORE = {
 // authoritative payment-record status, so a slightly-late webhook capture shows
 // as "approved" rather than a stale "failed".
 export async function GET(req: NextRequest) {
-  const paymentId = req.nextUrl.searchParams.get("payment");
+  const paymentId = parsePaymentId(req.nextUrl.searchParams.get("payment"));
   if (!paymentId)
     return NextResponse.json({ status: "failed", amountFils: 0 }, { headers: NO_STORE });
 

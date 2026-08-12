@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { PaymentResult } from "@/components/customer/PaymentResult";
+import { parsePaymentId } from "@/lib/paymentId";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +10,7 @@ export default async function PaymentResultPage({
   searchParams: Promise<{ payment?: string }>;
 }) {
   const { payment } = await searchParams;
-  if (!payment) redirect("/credit");
-  return <PaymentResult paymentId={payment} />;
+  const paymentId = parsePaymentId(payment);
+  if (!paymentId) redirect("/credit");
+  return <PaymentResult paymentId={paymentId} />;
 }
