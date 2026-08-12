@@ -344,6 +344,7 @@ export const dictionaries = {
       note: "ملاحظة",
       requestedAt: "تاريخ الطلب",
       notPricedYet: "لم يتم التسعير بعد",
+      late: "متأخر",
     },
 
     status: {
@@ -891,6 +892,7 @@ export const dictionaries = {
       note: "Note",
       requestedAt: "Requested",
       notPricedYet: "Not priced yet",
+      late: "Late",
     },
 
     status: {

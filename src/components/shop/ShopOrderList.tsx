@@ -7,6 +7,7 @@ import { useRealtimeOrders } from "@/lib/useRealtimeOrders";
 import { OrderStatusBadge } from "@/components/customer/OrderStatusBadge";
 import { formatAddress } from "@/lib/address";
 import { formatMoney } from "@/lib/money";
+import { isLate } from "@/lib/lateness";
 import type { OrderWithRelations } from "@/lib/orderTypes";
 import type { OrderStatus } from "@/types/database";
 
@@ -79,7 +80,14 @@ export function ShopOrderList({ orders }: { orders: OrderWithRelations[] }) {
               className="block rounded-2xl bg-card p-4 shadow-sm transition-shadow hover:shadow-md"
             >
               <div className="flex items-center justify-between">
-                <span className="font-extrabold tabular-nums">{o.order_no}</span>
+                <span className="flex items-center gap-2">
+                  <span className="font-extrabold tabular-nums">{o.order_no}</span>
+                  {isLate(o.dispatch_date, o.status) && (
+                    <span className="rounded-full bg-danger px-2 py-0.5 text-xs font-bold text-white">
+                      {t.orders.late}
+                    </span>
+                  )}
+                </span>
                 <OrderStatusBadge status={o.status} />
               </div>
               <div className="mt-2 text-sm">

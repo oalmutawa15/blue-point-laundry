@@ -7,6 +7,7 @@ import { useLang } from "@/lib/i18n/LanguageProvider";
 import { useRealtimeOrders } from "@/lib/useRealtimeOrders";
 import { formatAddress, mapsUrl } from "@/lib/address";
 import { markPickedUp } from "@/app/actions/driver";
+import { isLate } from "@/lib/lateness";
 import type { OrderWithRelations } from "@/lib/orderTypes";
 
 function JobCard({ order, kind }: { order: OrderWithRelations; kind: "pickup" | "delivery" }) {
@@ -27,10 +28,19 @@ function JobCard({ order, kind }: { order: OrderWithRelations; kind: "pickup" | 
     router.refresh();
   }
 
+  const late = isLate(order.dispatch_date, order.status);
+
   return (
-    <div className="rounded-2xl bg-card p-4 shadow-sm">
+    <div className={`rounded-2xl bg-card p-4 shadow-sm ${late ? "ring-2 ring-danger" : ""}`}>
       <div className="flex items-center justify-between">
-        <span className="font-extrabold tabular-nums">{order.order_no}</span>
+        <span className="flex items-center gap-2">
+          <span className="font-extrabold tabular-nums">{order.order_no}</span>
+          {late && (
+            <span className="rounded-full bg-danger px-2 py-0.5 text-xs font-bold text-white">
+              {t.orders.late}
+            </span>
+          )}
+        </span>
         <span className="rounded-full bg-brand-soft px-2.5 py-1 text-xs font-bold text-brand">
           {kind === "pickup" ? t.driver.pickupFrom : t.driver.deliverTo}
         </span>
