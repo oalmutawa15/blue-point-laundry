@@ -510,7 +510,6 @@ function DispatchControl({ order }: { order: Tables<"orders"> }) {
     return d.toISOString().slice(0, 10);
   };
   const tomorrow = shift(1);
-  const yesterday = shift(-1);
 
   async function save(d: string) {
     setBusy(true);
@@ -556,14 +555,6 @@ function DispatchControl({ order }: { order: Tables<"orders"> }) {
           className="flex-1 rounded-lg border border-border px-3 py-2 text-xs font-bold text-brand disabled:opacity-50"
         >
           {t.shop.showToday}
-        </button>
-        <button
-          type="button"
-          onClick={() => save(yesterday)}
-          disabled={busy}
-          className="flex-1 rounded-lg border border-danger/40 px-3 py-2 text-xs font-bold text-danger disabled:opacity-50"
-        >
-          {t.shop.makeLate}
         </button>
       </div>
     </div>
