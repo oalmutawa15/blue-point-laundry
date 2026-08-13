@@ -586,10 +586,12 @@ export function ShopOrderActions({
 // sees this order. Shown once a driver leg is active (pickup_requested /
 // delivering). Quick "today" / "make late" buttons make the flow testable.
 function DispatchControl({ order }: { order: Tables<"orders"> }) {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [date, setDate] = useState(order.dispatch_date ?? kuwaitToday());
+  // The day is locked by default and only editable after pressing Edit.
+  const [editing, setEditing] = useState(false);
 
   // Only while a driver leg is active — once received at the shop / delivered,
   // the dispatch is done and this box disappears.
@@ -602,53 +604,85 @@ function DispatchControl({ order }: { order: Tables<"orders"> }) {
     return d.toISOString().slice(0, 10);
   };
   const tomorrow = shift(1);
+  const fmtDate = (d: string) =>
+    new Date(`${d}T00:00:00Z`).toLocaleDateString(lang === "ar" ? "ar-KW" : "en-GB", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      timeZone: "UTC",
+    });
 
   async function save(d: string) {
     setBusy(true);
     setDate(d);
-    await setDispatchDate(order.id, d);
-    setBusy(false);
-    router.refresh();
+    try {
+      await setDispatchDate(order.id, d);
+      router.refresh();
+      setEditing(false);
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
     <div className="rounded-2xl border border-dashed border-border bg-card p-4">
       <p className="text-sm font-bold">{t.shop.dispatchTitle}</p>
       <p className="mt-1 text-xs text-muted-foreground">{t.shop.dispatchHint}</p>
-      <div className="mt-2 flex items-center gap-2">
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          className="flex-1 rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-brand"
-        />
-        <button
-          type="button"
-          onClick={() => save(date)}
-          disabled={busy}
-          className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-brand-foreground disabled:opacity-50"
-        >
-          {t.customers.save}
-        </button>
-      </div>
-      <div className="mt-2 flex gap-2">
-        <button
-          type="button"
-          onClick={() => save(tomorrow)}
-          disabled={busy}
-          className="flex-1 rounded-lg bg-brand-soft px-3 py-2 text-xs font-bold text-brand disabled:opacity-50"
-        >
-          {t.shop.showTomorrow}
-        </button>
-        <button
-          type="button"
-          onClick={() => save(kuwaitToday())}
-          disabled={busy}
-          className="flex-1 rounded-lg border border-border px-3 py-2 text-xs font-bold text-brand disabled:opacity-50"
-        >
-          {t.shop.showToday}
-        </button>
-      </div>
+
+      {editing ? (
+        <>
+          <div className="mt-2 flex items-center gap-2">
+            <input
+              type="date"
+              value={date}
+              min={kuwaitToday()}
+              onChange={(e) => setDate(e.target.value)}
+              className="flex-1 rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-brand"
+            />
+            <button
+              type="button"
+              onClick={() => save(date)}
+              disabled={busy}
+              className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-brand-foreground disabled:opacity-50"
+            >
+              {busy ? t.common.loading : t.customers.save}
+            </button>
+          </div>
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              onClick={() => save(tomorrow)}
+              disabled={busy}
+              className="flex-1 rounded-lg bg-brand-soft px-3 py-2 text-xs font-bold text-brand disabled:opacity-50"
+            >
+              {t.shop.showTomorrow}
+            </button>
+            <button
+              type="button"
+              onClick={() => save(kuwaitToday())}
+              disabled={busy}
+              className="flex-1 rounded-lg border border-border px-3 py-2 text-xs font-bold text-brand disabled:opacity-50"
+            >
+              {t.shop.showToday}
+            </button>
+          </div>
+        </>
+      ) : (
+        <div className="mt-2 flex items-center justify-between gap-2 rounded-xl border border-brand bg-brand-soft px-3 py-2.5">
+          <span className="flex items-center gap-1.5 text-sm font-bold text-brand">
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m20 6-11 11-5-5" /></svg>
+            {fmtDate(date)}
+          </span>
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="text-xs font-semibold text-brand underline"
+          >
+            {t.common.edit}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
