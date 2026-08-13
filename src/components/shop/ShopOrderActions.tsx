@@ -119,7 +119,7 @@ function DriverPicker({
   // When true, also lets the shop choose which day the driver delivers.
   withDate?: boolean;
 }) {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [driverId, setDriverId] = useState(drivers[0]?.id ?? "");
   const [busy, setBusy] = useState(false);
   // Default the delivery day to the next Kuwait day.
@@ -129,6 +129,19 @@ function DriverPicker({
     return d.toISOString().slice(0, 10);
   })();
   const [date, setDate] = useState(tomorrow);
+  // The day must be actively confirmed (not just left at the default) so the shop
+  // can see the date was chosen. Once set it locks, editable via a button.
+  const [editingDate, setEditingDate] = useState(true);
+  const [confirmed, setConfirmed] = useState(false);
+  const fmtDate = (d: string) =>
+    new Date(`${d}T00:00:00Z`).toLocaleDateString(lang === "ar" ? "ar-KW" : "en-GB", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      timeZone: "UTC",
+    });
+
   return (
     <div className="space-y-3">
       <p className="font-bold">{label}</p>
@@ -137,13 +150,46 @@ function DriverPicker({
           <label className="mb-1 block text-xs font-semibold text-muted-foreground">
             {t.shop.deliveryDay}
           </label>
-          <input
-            type="date"
-            value={date}
-            min={kuwaitToday()}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-full rounded-xl border border-border bg-white px-3 py-3 text-sm outline-none focus:border-brand"
-          />
+          {editingDate ? (
+            <div className="flex gap-2">
+              <input
+                type="date"
+                value={date}
+                min={kuwaitToday()}
+                onChange={(e) => setDate(e.target.value)}
+                className="flex-1 rounded-xl border border-border bg-white px-3 py-3 text-sm outline-none focus:border-brand"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (!date) return;
+                  setConfirmed(true);
+                  setEditingDate(false);
+                }}
+                disabled={!date}
+                className="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-brand-foreground disabled:opacity-50"
+              >
+                {t.shop.setDay}
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-2 rounded-xl border border-brand bg-brand-soft px-3 py-2.5">
+              <span className="flex items-center gap-1.5 text-sm font-bold text-brand">
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m20 6-11 11-5-5" /></svg>
+                {fmtDate(date)}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingDate(true);
+                  setConfirmed(false);
+                }}
+                className="text-xs font-semibold text-brand underline"
+              >
+                {t.common.edit}
+              </button>
+            </div>
+          )}
         </div>
       )}
       <div>
@@ -171,11 +217,14 @@ function DriverPicker({
           setBusy(true);
           await onAssign(driverId, withDate ? date : undefined);
         }}
-        disabled={busy || !driverId}
+        disabled={busy || !driverId || (withDate && !confirmed)}
         className="w-full rounded-xl bg-brand px-4 py-3 text-base font-bold text-brand-foreground disabled:opacity-50"
       >
         {busy ? t.common.loading : t.shop.assign}
       </button>
+      {withDate && !confirmed && (
+        <p className="text-center text-xs text-muted-foreground">{t.shop.confirmDayFirst}</p>
+      )}
     </div>
   );
 }
