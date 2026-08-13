@@ -553,6 +553,48 @@ export async function notifyLateOrders(
   return { notified };
 }
 
+// Delivery attempt failed (nobody home / couldn't leave the order) → the order is
+// back at the shop. Tell the customer it'll be redelivered, and alert the shop to
+// reschedule it.
+export async function notifyDeliveryFailed(
+  orderId: string,
+  orderNo: string,
+  customerId: string | null,
+) {
+  const admin = createAdminClient();
+  if (customerId) {
+    const { data: c } = await admin
+      .from("profiles")
+      .select("phone")
+      .eq("id", customerId)
+      .single();
+    await record(admin, {
+      orderId,
+      recipientId: customerId,
+      recipientPhone: c?.phone ?? null,
+      template: "delivery_failed",
+      message:
+        `🚪 حاول مندوبنا توصيل طلبك ${orderNo} لكن لم يتمكن من تسليمه. طلبك عاد إلى مصبغة بلو بوينت وسنعيد محاولة التوصيل قريباً.` +
+        `\n\n🚪 Our driver attempted to deliver your order ${orderNo} but couldn't hand it over. It's back at Blue Point Laundry and we'll re-attempt delivery soon.`,
+    });
+  }
+  const { data: staff } = await admin
+    .from("profiles")
+    .select("id, phone")
+    .in("role", ["shop", "admin"]);
+  for (const s of staff ?? []) {
+    await record(admin, {
+      orderId,
+      recipientId: s.id,
+      recipientPhone: s.phone,
+      template: "delivery_failed_shop",
+      message:
+        `↩️ تعذّر توصيل الطلب ${orderNo} وأعاده المندوب إلى المصبغة. يرجى إعادة جدولته لمندوب آخر.` +
+        `\n\n↩️ Order ${orderNo} could not be delivered and was returned by the driver. Please reschedule it to another driver.`,
+    });
+  }
+}
+
 // Delivered → notify the customer.
 export async function notifyDelivered(
   orderId: string,

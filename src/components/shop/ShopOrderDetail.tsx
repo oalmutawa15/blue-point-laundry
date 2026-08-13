@@ -49,10 +49,21 @@ export function ShopOrderDetail({
           <svg className="h-6 w-6 rtl:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
         </Link>
         <h1 className="text-xl font-extrabold tabular-nums">{order.order_no}</h1>
-        <div className="ms-auto">
+        <div className="ms-auto flex items-center gap-2">
+          {order.delivery_failed && (
+            <span className="rounded-full bg-amber-500 px-2.5 py-1 text-xs font-bold text-white">
+              {t.driver.returned}
+            </span>
+          )}
           <OrderStatusBadge status={order.status} fulfillment={order.fulfillment} />
         </div>
       </div>
+
+      {order.delivery_failed && (
+        <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">
+          {t.shop.deliveryReturned}
+        </p>
+      )}
 
       {/* Customer + address */}
       <div className="rounded-2xl bg-card p-4 shadow-sm">

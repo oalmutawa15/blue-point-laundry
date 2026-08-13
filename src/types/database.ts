@@ -302,6 +302,7 @@ export type Database = {
           delivery_photo_url: string | null
           dispatch_date: string | null
           dispatch_late: boolean
+          delivery_failed: boolean
           fulfillment: string
           id: string
           order_no: string
@@ -328,6 +329,7 @@ export type Database = {
           delivery_photo_url?: string | null
           dispatch_date?: string | null
           dispatch_late?: boolean
+          delivery_failed?: boolean
           fulfillment?: string
           id?: string
           order_no?: string
@@ -354,6 +356,7 @@ export type Database = {
           delivery_photo_url?: string | null
           dispatch_date?: string | null
           dispatch_late?: boolean
+          delivery_failed?: boolean
           fulfillment?: string
           id?: string
           order_no?: string

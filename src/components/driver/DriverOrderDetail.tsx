@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useLang } from "@/lib/i18n/LanguageProvider";
 import { OrderStatusBadge } from "@/components/customer/OrderStatusBadge";
 import { formatAddress, mapsUrl } from "@/lib/address";
-import { markPickedUp, markDelivered } from "@/app/actions/driver";
+import { markPickedUp, markDelivered, returnDelivery } from "@/app/actions/driver";
 import type { Tables } from "@/types/database";
 import type { CustomerLite } from "@/lib/orderTypes";
 
@@ -182,6 +182,18 @@ export function DriverOrderDetail({
           {!photo && (
             <p className="text-center text-xs text-muted-foreground">{t.driver.photoRequired}</p>
           )}
+
+          {/* Couldn't deliver → return the order to the shop for re-dispatch. */}
+          <button
+            onClick={() => {
+              if (window.confirm(t.driver.returnConfirm)) act(() => returnDelivery(order.id));
+            }}
+            disabled={busy}
+            className="w-full rounded-xl border border-danger px-4 py-3 text-sm font-bold text-danger disabled:opacity-50"
+          >
+            {t.driver.returnToShop}
+          </button>
+          <p className="text-center text-xs text-muted-foreground">{t.driver.returnHint}</p>
         </div>
       )}
     </div>

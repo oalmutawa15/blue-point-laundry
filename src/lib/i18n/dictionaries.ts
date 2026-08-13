@@ -466,6 +466,7 @@ export const dictionaries = {
       qty: "الكمية",
       unitPrice: "السعر (د.ك)",
       total: "الإجمالي",
+      deliveryReturned: "تعذّر توصيل هذا الطلب وأعاده المندوب. يرجى تعيين مندوب لإعادة التوصيل.",
       deliveryDate: "تاريخ التسليم",
       dateRequired: "تاريخ التسليم مطلوب",
       editOrder: "تعديل الطلب",
@@ -521,6 +522,10 @@ export const dictionaries = {
       deliveryPhoto: "صورة التسليم",
       photoRequired: "يجب إرفاق صورة قبل تأكيد التسليم",
       photoTooLarge: "تعذّر رفع الصورة. حاول مرة أخرى بصورة أوضح أو أصغر.",
+      returnToShop: "تعذّر التوصيل — إرجاع للمصبغة",
+      returnConfirm: "لم تتمكن من تسليم الطلب؟ سيُعاد إلى المصبغة لإعادة جدولته.",
+      returnHint: "إذا لم يكن أحد في المنزل ولا يمكن ترك الطلب، أرجعه للمصبغة.",
+      returned: "مُرجَع",
     },
 
     admin: {
@@ -1104,6 +1109,7 @@ export const dictionaries = {
       qty: "Qty",
       unitPrice: "Price (KWD)",
       total: "Total",
+      deliveryReturned: "This order couldn't be delivered and was returned by the driver. Please assign a driver to re-deliver.",
       deliveryDate: "Delivery date",
       dateRequired: "Delivery date is required",
       editOrder: "Edit order",
@@ -1159,6 +1165,10 @@ export const dictionaries = {
       deliveryPhoto: "Delivery photo",
       photoRequired: "A photo is required before confirming delivery",
       photoTooLarge: "Couldn't upload the photo. Please try again with a smaller/clearer photo.",
+      returnToShop: "Couldn't deliver — return to shop",
+      returnConfirm: "Couldn't hand over the order? It'll go back to the shop to be rescheduled.",
+      returnHint: "If nobody is home and the order can't be left, return it to the shop.",
+      returned: "Returned",
     },
 
     admin: {

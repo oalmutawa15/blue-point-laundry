@@ -87,6 +87,11 @@ export function ShopOrderList({ orders }: { orders: OrderWithRelations[] }) {
                       {t.orders.late}
                     </span>
                   )}
+                  {o.delivery_failed && (
+                    <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-bold text-white">
+                      {t.driver.returned}
+                    </span>
+                  )}
                 </span>
                 <OrderStatusBadge status={o.status} />
               </div>

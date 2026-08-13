@@ -5,7 +5,12 @@ import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { notifyDelivered, notifyCustomerStage, notifyDeliveryPhoto } from "@/lib/notify";
+import {
+  notifyDelivered,
+  notifyCustomerStage,
+  notifyDeliveryPhoto,
+  notifyDeliveryFailed,
+} from "@/lib/notify";
 import { kuwaitDate } from "@/lib/dispatch";
 
 type Ok = { ok: true } | { ok: false; error: string };
@@ -62,6 +67,41 @@ async function uploadDeliveryPhoto(orderId: string, dataUrl: string): Promise<st
   });
   if (error) return null;
   return admin.storage.from("delivery-photos").getPublicUrl(path).data.publicUrl;
+}
+
+// delivering -> ready (returned): the driver reached the customer but couldn't
+// hand over the clothes (nobody home, nowhere to leave them). The order goes back
+// to the shop as a failed delivery, awaiting re-dispatch to another driver the
+// next day. Notifies the shop and the customer.
+export async function returnDelivery(orderId: string): Promise<Ok> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "unauthorized" };
+
+  const { data, error } = await supabase
+    .from("orders")
+    .update({
+      status: "ready",
+      delivery_driver_id: null,
+      dispatch_date: null,
+      delivery_failed: true,
+    })
+    .eq("id", orderId)
+    .eq("delivery_driver_id", user.id)
+    .eq("status", "delivering")
+    .select("order_no, customer_id")
+    .single();
+  if (error) return { ok: false, error: error.message };
+
+  after(async () => {
+    try {
+      await notifyDeliveryFailed(orderId, data.order_no, data.customer_id);
+    } catch {}
+  });
+  revalidate(orderId);
+  return { ok: true };
 }
 
 // delivering -> delivered: driver delivered the clothes, with a proof photo.
