@@ -435,22 +435,26 @@ export function ShopOrderActions({
   async function run(fn: () => Promise<{ ok: boolean; error?: string }>) {
     setBusy(true);
     setError(null);
-    const res = await fn();
-    if (!res.ok) {
+    try {
+      const res = await fn();
+      if (!res.ok) {
+        setError(
+          res.error === "customer_in_debt"
+            ? t.shop.customerInDebt
+            : res.error === "insufficient_credit"
+              ? t.shop.customerNoCredit
+              : (res.error ?? "error"),
+        );
+        return;
+      }
+      router.refresh();
+    } catch {
+      setError(t.common.retry);
+    } finally {
+      // ALWAYS clear busy — even if the action threw or router.refresh() lagged —
+      // so the button never stays stuck on "Loading…".
       setBusy(false);
-      setError(
-        res.error === "customer_in_debt"
-          ? t.shop.customerInDebt
-          : res.error === "insufficient_credit"
-            ? t.shop.customerNoCredit
-            : (res.error ?? "error"),
-      );
-      return;
     }
-    // Re-fetch the server view AND clear the busy state — otherwise the button
-    // stays stuck on "Loading…" until the page is manually reloaded.
-    router.refresh();
-    setBusy(false);
   }
 
   const info = (text: string) => (
