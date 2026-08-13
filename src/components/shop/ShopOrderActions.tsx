@@ -111,34 +111,65 @@ function DriverPicker({
   drivers,
   onAssign,
   label,
+  withDate = false,
 }: {
   drivers: DriverLite[];
-  onAssign: (driverId: string) => Promise<void>;
+  onAssign: (driverId: string, date?: string) => Promise<void>;
   label: string;
+  // When true, also lets the shop choose which day the driver delivers.
+  withDate?: boolean;
 }) {
   const { t } = useLang();
   const [driverId, setDriverId] = useState(drivers[0]?.id ?? "");
   const [busy, setBusy] = useState(false);
+  // Default the delivery day to the next Kuwait day.
+  const tomorrow = (() => {
+    const d = new Date(`${kuwaitToday()}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + 1);
+    return d.toISOString().slice(0, 10);
+  })();
+  const [date, setDate] = useState(tomorrow);
   return (
     <div className="space-y-3">
       <p className="font-bold">{label}</p>
-      <select
-        value={driverId}
-        onChange={(e) => setDriverId(e.target.value)}
-        className="w-full rounded-xl border border-border bg-white px-3 py-3 text-sm outline-none focus:border-brand"
-      >
-        {drivers.length === 0 && <option value="">—</option>}
-        {drivers.map((d) => (
-          <option key={d.id} value={d.id}>
-            {d.full_name || d.phone}
-          </option>
-        ))}
-      </select>
+      {withDate && (
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+            {t.shop.deliveryDay}
+          </label>
+          <input
+            type="date"
+            value={date}
+            min={kuwaitToday()}
+            onChange={(e) => setDate(e.target.value)}
+            className="w-full rounded-xl border border-border bg-white px-3 py-3 text-sm outline-none focus:border-brand"
+          />
+        </div>
+      )}
+      <div>
+        {withDate && (
+          <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+            {t.shop.deliveryDriver}
+          </label>
+        )}
+        <select
+          value={driverId}
+          onChange={(e) => setDriverId(e.target.value)}
+          className="w-full rounded-xl border border-border bg-white px-3 py-3 text-sm outline-none focus:border-brand"
+        >
+          {drivers.length === 0 && <option value="">—</option>}
+          {drivers.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.full_name || d.phone}
+            </option>
+          ))}
+        </select>
+      </div>
       <button
         onClick={async () => {
           if (!driverId) return;
           setBusy(true);
-          await onAssign(driverId);
+          await onAssign(driverId, withDate ? date : undefined);
         }}
         disabled={busy || !driverId}
         className="w-full rounded-xl bg-brand px-4 py-3 text-base font-bold text-brand-foreground disabled:opacity-50"
@@ -455,7 +486,8 @@ export function ShopOrderActions({
             <DriverPicker
               drivers={drivers}
               label={t.shop.assignDelivery}
-              onAssign={(id) => run(() => assignDeliveryDriver(order.id, id))}
+              withDate
+              onAssign={(id, date) => run(() => assignDeliveryDriver(order.id, id, date))}
             />
             {error && <p className="text-sm font-semibold text-danger">{error}</p>}
           </div>

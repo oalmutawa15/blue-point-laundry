@@ -214,17 +214,23 @@ export async function markPickedUp(orderId: string): Promise<Ok> {
   return res;
 }
 
-// ready -> delivering: assign a delivery driver and dispatch.
-export async function assignDeliveryDriver(orderId: string, driverId: string): Promise<Ok> {
+// ready -> delivering: assign a delivery driver and choose the dispatch day.
+// `date` (YYYY-MM-DD) is the day the driver should deliver; defaults to the next
+// Kuwait day when the shop doesn't pick one.
+export async function assignDeliveryDriver(
+  orderId: string,
+  driverId: string,
+  date?: string,
+): Promise<Ok> {
   if (!(await getStaffProfile())) return { ok: false, error: "forbidden" };
   const supabase = await createClient();
-  // Next-day dispatch: the driver only sees this from 00:00 (Kuwait) tomorrow.
+  const dispatchDate = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : nextDispatchDate();
   const { data, error } = await supabase
     .from("orders")
     .update({
       delivery_driver_id: driverId,
       status: "delivering",
-      dispatch_date: nextDispatchDate(),
+      dispatch_date: dispatchDate,
     })
     .eq("id", orderId)
     .select("order_no")
