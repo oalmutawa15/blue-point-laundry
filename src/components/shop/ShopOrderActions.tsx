@@ -129,10 +129,10 @@ function DriverPicker({
     return d.toISOString().slice(0, 10);
   })();
   const [date, setDate] = useState(tomorrow);
-  // The day must be actively confirmed (not just left at the default) so the shop
-  // can see the date was chosen. Once set it locks, editable via a button.
-  const [editingDate, setEditingDate] = useState(true);
-  const [confirmed, setConfirmed] = useState(false);
+  // The day starts SET and locked (default = tomorrow), shown as a chip. It can
+  // only be changed by pressing Edit, which reopens the picker until re-set.
+  const [editingDate, setEditingDate] = useState(false);
+  const [confirmed, setConfirmed] = useState(true);
   const fmtDate = (d: string) =>
     new Date(`${d}T00:00:00Z`).toLocaleDateString(lang === "ar" ? "ar-KW" : "en-GB", {
       weekday: "short",
@@ -215,14 +215,18 @@ function DriverPicker({
         onClick={async () => {
           if (!driverId) return;
           setBusy(true);
-          await onAssign(driverId, withDate ? date : undefined);
+          try {
+            await onAssign(driverId, withDate ? date : undefined);
+          } finally {
+            setBusy(false);
+          }
         }}
         disabled={busy || !driverId || (withDate && !confirmed)}
         className="w-full rounded-xl bg-brand px-4 py-3 text-base font-bold text-brand-foreground disabled:opacity-50"
       >
         {busy ? t.common.loading : t.shop.assign}
       </button>
-      {withDate && !confirmed && (
+      {withDate && editingDate && (
         <p className="text-center text-xs text-muted-foreground">{t.shop.confirmDayFirst}</p>
       )}
     </div>
@@ -443,7 +447,10 @@ export function ShopOrderActions({
       );
       return;
     }
+    // Re-fetch the server view AND clear the busy state — otherwise the button
+    // stays stuck on "Loading…" until the page is manually reloaded.
     router.refresh();
+    setBusy(false);
   }
 
   const info = (text: string) => (
