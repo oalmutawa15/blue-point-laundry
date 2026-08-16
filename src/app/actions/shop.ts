@@ -35,12 +35,13 @@ function revalidate(orderId: string) {
   revalidatePath(`/orders/${orderId}`);
 }
 
-async function setStatus(orderId: string, status: OrderStatus): Promise<Ok> {
+async function setStatus(orderId: string, status: OrderStatus, force = false): Promise<Ok> {
   if (!(await getStaffProfile())) return { ok: false, error: "forbidden" };
   const supabase = await createClient();
   const { error } = await supabase
     .from("orders")
-    .update({ status })
+    // `force` = the shop chose to proceed despite the customer being in debt.
+    .update(force ? { status, debt_override: true } : { status })
     .eq("id", orderId);
   if (error) {
     if (/CUSTOMER_IN_DEBT/.test(error.message)) return { ok: false, error: "customer_in_debt" };
@@ -158,8 +159,8 @@ export async function confirmPayment(orderId: string): Promise<Ok> {
 
 // washing -> ready: clothes are clean and ready for delivery / pickup.
 // For a self-pickup order, tell the customer it's ready to collect.
-export async function markReady(orderId: string): Promise<Ok> {
-  const res = await setStatus(orderId, "ready");
+export async function markReady(orderId: string, force = false): Promise<Ok> {
+  const res = await setStatus(orderId, "ready", force);
   if (!res.ok) return res;
   after(async () => {
     try {
@@ -221,6 +222,7 @@ export async function assignDeliveryDriver(
   orderId: string,
   driverId: string,
   date?: string,
+  force = false,
 ): Promise<Ok> {
   if (!(await getStaffProfile())) return { ok: false, error: "forbidden" };
   const supabase = await createClient();
@@ -231,6 +233,8 @@ export async function assignDeliveryDriver(
       delivery_driver_id: driverId,
       status: "delivering",
       dispatch_date: dispatchDate,
+      // `force` = deliver despite the customer being in debt.
+      ...(force ? { debt_override: true } : {}),
     })
     .eq("id", orderId)
     .select("order_no")

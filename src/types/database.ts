@@ -303,6 +303,7 @@ export type Database = {
           dispatch_date: string | null
           dispatch_late: boolean
           delivery_failed: boolean
+          debt_override: boolean
           fulfillment: string
           id: string
           order_no: string
@@ -330,6 +331,7 @@ export type Database = {
           dispatch_date?: string | null
           dispatch_late?: boolean
           delivery_failed?: boolean
+          debt_override?: boolean
           fulfillment?: string
           id?: string
           order_no?: string
@@ -357,6 +359,7 @@ export type Database = {
           dispatch_date?: string | null
           dispatch_late?: boolean
           delivery_failed?: boolean
+          debt_override?: boolean
           fulfillment?: string
           id?: string
           order_no?: string

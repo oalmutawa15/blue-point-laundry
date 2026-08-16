@@ -431,6 +431,9 @@ export function ShopOrderActions({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
+  // When an action is blocked because the customer is in debt, we stash the
+  // "force" retry here and show the shop a Deliver-anyway / Wait prompt.
+  const [debtRetry, setDebtRetry] = useState<null | (() => Promise<{ ok: boolean; error?: string }>)>(null);
 
   async function run(fn: () => Promise<{ ok: boolean; error?: string }>) {
     setBusy(true);
@@ -457,6 +460,38 @@ export function ShopOrderActions({
     }
   }
 
+  // Like run(), but if the customer is in debt it doesn't just error — it offers
+  // the shop the choice to deliver anyway (force) or wait.
+  async function runGated(
+    normal: () => Promise<{ ok: boolean; error?: string }>,
+    force: () => Promise<{ ok: boolean; error?: string }>,
+  ) {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await normal();
+      if (!res.ok) {
+        if (res.error === "customer_in_debt") {
+          setDebtRetry(() => force);
+          return;
+        }
+        setError(res.error === "insufficient_credit" ? t.shop.customerNoCredit : (res.error ?? "error"));
+        return;
+      }
+      router.refresh();
+    } catch {
+      setError(t.common.retry);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmDeliverAnyway() {
+    const force = debtRetry;
+    setDebtRetry(null);
+    if (force) await run(force);
+  }
+
   const info = (text: string) => (
     <p className="rounded-xl bg-muted px-4 py-3 text-sm text-muted-foreground">{text}</p>
   );
@@ -465,6 +500,24 @@ export function ShopOrderActions({
     <div className="space-y-2">
       <button
         onClick={() => run(fn)}
+        disabled={busy}
+        className="w-full rounded-xl bg-brand px-4 py-3.5 text-base font-bold text-brand-foreground disabled:opacity-50"
+      >
+        {busy ? t.common.loading : label}
+      </button>
+      {error && <p className="text-sm font-semibold text-danger">{error}</p>}
+    </div>
+  );
+
+  // A primary button that, if blocked by customer debt, offers "deliver anyway".
+  const gatedBtn = (
+    label: string,
+    normal: () => Promise<{ ok: boolean; error?: string }>,
+    force: () => Promise<{ ok: boolean; error?: string }>,
+  ) => (
+    <div className="space-y-2">
+      <button
+        onClick={() => runGated(normal, force)}
         disabled={busy}
         className="w-full rounded-xl bg-brand px-4 py-3.5 text-base font-bold text-brand-foreground disabled:opacity-50"
       >
@@ -526,9 +579,10 @@ export function ShopOrderActions({
           </div>
         );
       case "washing":
-        return primaryBtn(
+        return gatedBtn(
           order.fulfillment === "self_pickup" ? t.shop.markReadyPickupBtn : t.shop.markReadyBtn,
           () => markReady(order.id),
+          () => markReady(order.id, true),
         );
       case "ready":
         // Self-pickup orders have no delivery-driver step: the customer collects
@@ -547,7 +601,12 @@ export function ShopOrderActions({
               drivers={drivers}
               label={t.shop.assignDelivery}
               withDate
-              onAssign={(id, date) => run(() => assignDeliveryDriver(order.id, id, date))}
+              onAssign={(id, date) =>
+                runGated(
+                  () => assignDeliveryDriver(order.id, id, date),
+                  () => assignDeliveryDriver(order.id, id, date, true),
+                )
+              }
             />
             {error && <p className="text-sm font-semibold text-danger">{error}</p>}
           </div>
@@ -562,6 +621,38 @@ export function ShopOrderActions({
   return (
     <div className="space-y-4">
       {statusAction}
+
+      {/* Debt override: the customer hasn't paid / has no credit — the shop can
+          still choose to deliver, or wait. */}
+      {debtRetry && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-card p-5 shadow-xl">
+            <div className="flex items-center gap-2">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4M12 17h.01" /><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" /></svg>
+              </span>
+              <p className="text-base font-extrabold">{t.shop.debtTitle}</p>
+            </div>
+            <p className="mt-2 text-sm text-muted-foreground">{t.shop.debtBody}</p>
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={confirmDeliverAnyway}
+                disabled={busy}
+                className="flex-1 rounded-xl bg-brand px-4 py-3 text-sm font-bold text-brand-foreground disabled:opacity-50"
+              >
+                {busy ? t.common.loading : t.shop.deliverAnyway}
+              </button>
+              <button
+                onClick={() => setDebtRetry(null)}
+                disabled={busy}
+                className="flex-1 rounded-xl border border-border px-4 py-3 text-sm font-bold text-brand disabled:opacity-50"
+              >
+                {t.shop.waitInstead}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <DispatchControl order={order} />
 
