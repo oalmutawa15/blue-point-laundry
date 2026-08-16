@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { persistAuthCookie } from "./cookies";
 
 // Server-side Supabase client bound to the request cookies (RSC / route handlers / server actions).
 export async function createClient() {
@@ -16,7 +17,7 @@ export async function createClient() {
         setAll(cookiesToSet) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options),
+              cookieStore.set(name, value, persistAuthCookie(name, value, options)),
             );
           } catch {
             // called from a Server Component — safe to ignore, middleware refreshes the session

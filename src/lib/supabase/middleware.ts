@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { persistAuthCookie } from "./cookies";
 
 // Refreshes the Supabase session cookie on each request so server components see a valid session.
 export async function updateSession(request: NextRequest) {
@@ -19,7 +20,7 @@ export async function updateSession(request: NextRequest) {
           );
           response = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options),
+            response.cookies.set(name, value, persistAuthCookie(name, value, options)),
           );
         },
       },
