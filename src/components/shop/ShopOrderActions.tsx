@@ -496,6 +496,28 @@ export function ShopOrderActions({
     <p className="rounded-xl bg-muted px-4 py-3 text-sm text-muted-foreground">{text}</p>
   );
 
+  // Shows the driver currently dispatched on this order (pickup or delivery).
+  const driverBadge = (driverId: string | null) => {
+    const d = drivers.find((x) => x.id === driverId);
+    if (!d) return null;
+    return (
+      <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand/10 text-brand">
+          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs text-muted-foreground">{t.shop.driverLabel}</p>
+          <p className="truncate text-sm font-bold">{d.full_name || d.phone}</p>
+        </div>
+        {d.phone && (
+          <a href={`tel:${d.phone}`} dir="ltr" className="text-xs font-semibold text-brand">
+            {d.phone}
+          </a>
+        )}
+      </div>
+    );
+  };
+
   const primaryBtn = (label: string, fn: () => Promise<{ ok: boolean; error?: string }>) => (
     <div className="space-y-2">
       <button
@@ -541,7 +563,12 @@ export function ShopOrderActions({
           />
         );
       case "pickup_requested":
-        return info(`${t.status.pickup_requested} — ${t.driver.pickups}`);
+        return (
+          <div className="space-y-2">
+            {info(`${t.status.pickup_requested} — ${t.driver.pickups}`)}
+            {driverBadge(order.pickup_driver_id)}
+          </div>
+        );
       case "picked_up":
         return primaryBtn(t.shop.markReceived, () => markReceived(order.id));
       case "counting":
@@ -612,7 +639,12 @@ export function ShopOrderActions({
           </div>
         );
       case "delivering":
-        return info(t.status.delivering);
+        return (
+          <div className="space-y-2">
+            {info(t.status.delivering)}
+            {driverBadge(order.delivery_driver_id)}
+          </div>
+        );
       default:
         return null;
     }
