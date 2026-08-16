@@ -109,6 +109,7 @@ export async function listDrivers(): Promise<DriverOption[]> {
     .from("profiles")
     .select("id, full_name, phone")
     .eq("role", "driver")
+    .eq("is_active", true)
     .order("full_name");
   return (data ?? []) as DriverOption[];
 }
