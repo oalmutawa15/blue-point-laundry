@@ -11,7 +11,13 @@ import { isLate, kuwaitToday } from "@/lib/lateness";
 import { routeOrders } from "@/lib/driverRoute";
 import type { OrderWithRelations } from "@/lib/orderTypes";
 
-function JobCard({ order, kind }: { order: OrderWithRelations; kind: "pickup" | "delivery" }) {
+function JobCard({
+  order,
+  kind,
+}: {
+  order: OrderWithRelations;
+  kind: "pickup" | "delivery" | "in_car";
+}) {
   const { t, lang } = useLang();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -45,9 +51,16 @@ function JobCard({ order, kind }: { order: OrderWithRelations; kind: "pickup" | 
             </span>
           )}
         </span>
-        <span className="rounded-full bg-brand-soft px-2.5 py-1 text-xs font-bold text-brand">
-          {kind === "pickup" ? t.driver.pickupFrom : t.driver.deliverTo}
-        </span>
+        {kind === "in_car" ? (
+          <span className="flex items-center gap-1 rounded-full bg-success/15 px-2.5 py-1 text-xs font-bold text-success">
+            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 17h14M5 17a2 2 0 0 1-2-2v-3l2-5h12l2 5v3a2 2 0 0 1-2 2M5 17v2M19 17v2" /><circle cx="7.5" cy="17" r="1.5" /><circle cx="16.5" cy="17" r="1.5" /></svg>
+            {t.driver.inCar}
+          </span>
+        ) : (
+          <span className="rounded-full bg-brand-soft px-2.5 py-1 text-xs font-bold text-brand">
+            {kind === "pickup" ? t.driver.pickupFrom : t.driver.deliverTo}
+          </span>
+        )}
       </div>
 
       <p className="mt-2 text-sm font-semibold">
@@ -156,9 +169,11 @@ function DaySection({
 export function DriverJobList({
   pickups,
   deliveries,
+  inCar = [],
 }: {
   pickups: OrderWithRelations[];
   deliveries: OrderWithRelations[];
+  inCar?: OrderWithRelations[];
 }) {
   const { t } = useLang();
   useRealtimeOrders("driver");
@@ -173,7 +188,7 @@ export function DriverJobList({
   const todayDeliveries = deliveries.filter((o) => !isTomorrow(o));
   const tomorrowDeliveries = deliveries.filter(isTomorrow);
 
-  const empty = pickups.length === 0 && deliveries.length === 0;
+  const empty = pickups.length === 0 && deliveries.length === 0 && inCar.length === 0;
 
   return (
     <div className="space-y-6">
@@ -187,6 +202,17 @@ export function DriverJobList({
 
       <DaySection title={t.driver.today} pickups={todayPickups} deliveries={todayDeliveries} />
       <DaySection title={t.driver.tomorrow} pickups={tomorrowPickups} deliveries={tomorrowDeliveries} />
+
+      {/* Collected from the customer, waiting to be received at the shop. Sits at
+          the bottom so the driver sees the day's remaining jobs first. */}
+      {inCar.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-lg font-extrabold">{t.driver.inCarTitle}</h2>
+          {routeOrders(inCar).map((o) => (
+            <JobCard key={o.id} order={o} kind="in_car" />
+          ))}
+        </section>
+      )}
     </div>
   );
 }

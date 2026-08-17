@@ -20,7 +20,7 @@ export default async function DriverDashboard() {
   const tomorrow = kuwaitDate(1);
   const visible = `dispatch_date.is.null,dispatch_date.lte.${tomorrow}`;
 
-  const [pickupsRes, deliveriesRes] = await Promise.all([
+  const [pickupsRes, deliveriesRes, inCarRes] = await Promise.all([
     supabase
       .from("orders")
       .select(SELECT)
@@ -35,12 +35,20 @@ export default async function DriverDashboard() {
       .eq("status", "delivering")
       .or(visible)
       .order("created_at", { ascending: false }),
+    // Collected from the customer, not yet received at the shop → "in the car".
+    supabase
+      .from("orders")
+      .select(SELECT)
+      .eq("pickup_driver_id", user.id)
+      .eq("status", "picked_up")
+      .order("created_at", { ascending: false }),
   ]);
 
   return (
     <DriverJobList
       pickups={(pickupsRes.data ?? []) as unknown as OrderWithRelations[]}
       deliveries={(deliveriesRes.data ?? []) as unknown as OrderWithRelations[]}
+      inCar={(inCarRes.data ?? []) as unknown as OrderWithRelations[]}
     />
   );
 }

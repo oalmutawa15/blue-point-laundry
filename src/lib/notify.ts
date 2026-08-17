@@ -418,6 +418,32 @@ export async function notifyNewOrder(orderId: string, orderNo: string) {
   }
 }
 
+// Shop received the pickup the driver brought in → confirm to the pickup driver,
+// with the order reference and client name, so they know it's off their plate.
+export async function notifyPickupReceived(
+  orderId: string,
+  orderNo: string,
+  driverId: string,
+  customerName: string | null,
+) {
+  const admin = createAdminClient();
+  const { data: d } = await admin
+    .from("profiles")
+    .select("phone")
+    .eq("id", driverId)
+    .single();
+  const who = customerName?.trim() ? ` (${customerName.trim()})` : "";
+  await record(admin, {
+    orderId,
+    recipientId: driverId,
+    recipientPhone: d?.phone ?? null,
+    template: "pickup_received_driver",
+    message:
+      `📥 استلمت المصبغة الطلب ${orderNo}${who} الذي أحضرته. تم إنجازه من عندك، شكراً لك.` +
+      `\n\n📥 The shop has received order ${orderNo}${who} that you brought in. It's done on your side — thank you.`,
+  });
+}
+
 // Pickup assigned → alert the driver.
 export async function notifyPickupAssigned(
   orderId: string,

@@ -10,6 +10,7 @@ import {
   notifyReadyForDelivery,
   notifyReadyForPickup,
   notifyCollected,
+  notifyPickupReceived,
 } from "@/lib/notify";
 import { sendReceiptFor } from "@/lib/receipt";
 import { nextDispatchDate } from "@/lib/dispatch";
@@ -81,7 +82,26 @@ export async function assignPickupDriver(orderId: string, driverId: string): Pro
 
 // picked_up -> counting: clothes received at the shop, ready to be counted.
 export async function markReceived(orderId: string): Promise<Ok> {
-  return setStatus(orderId, "counting");
+  const res = await setStatus(orderId, "counting");
+  if (!res.ok) return res;
+  // Tell the pickup driver the shop received the order they brought in — with the
+  // reference + client name — so it drops off their "in the car" list.
+  after(async () => {
+    try {
+      const admin = createAdminClient();
+      const { data: o } = await admin
+        .from("orders")
+        .select("order_no, pickup_driver_id, customer:customer_id(full_name)")
+        .eq("id", orderId)
+        .single();
+      const rel = o?.customer as { full_name: string | null } | { full_name: string | null }[] | null;
+      const cust = Array.isArray(rel) ? rel[0] : rel;
+      if (o?.pickup_driver_id) {
+        await notifyPickupReceived(orderId, o.order_no, o.pickup_driver_id, cust?.full_name ?? null);
+      }
+    } catch {}
+  });
+  return res;
 }
 
 // counting -> awaiting_payment: record items, price and delivery date.
