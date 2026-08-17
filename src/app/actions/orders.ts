@@ -19,16 +19,9 @@ export async function createPickupRequest(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "unauthorized" };
 
-  // Prepaid gate: must have a positive wallet balance to place an order.
-  const { data: prof } = await supabase
-    .from("profiles")
-    .select("credit_fils")
-    .eq("id", user.id)
-    .single();
-  if (!prof || prof.credit_fils <= 0) {
-    return { ok: false, error: "insufficient_credit" };
-  }
-
+  // No prepaid gate: the customer can request a pickup even with no credit. The
+  // wallet is charged when the shop prices the order (debt allowed), and the shop
+  // decides at delivery whether to hand it over despite an unpaid balance.
   const { data, error } = await supabase
     .from("orders")
     .insert({
