@@ -121,6 +121,15 @@ export async function createWalkInOrder(input: {
   // method (cash/KNET/card/wallet) settles the order now.
   const charged = method !== "link";
 
+  // Apply the customer's permanent discount (if any).
+  const { data: prof } = await admin
+    .from("profiles")
+    .select("discount_percent")
+    .eq("id", cust.id)
+    .single();
+  const discount = prof?.discount_percent ?? 0;
+  const priced = discount > 0 ? Math.round((total * (100 - discount)) / 100) : total;
+
   const { data: order, error } = await admin
     .from("orders")
     .insert({
@@ -130,7 +139,8 @@ export async function createWalkInOrder(input: {
       charged,
       payment_method: method,
       piece_count: pieces,
-      price_fils: total,
+      price_fils: priced,
+      discount_percent: discount,
       delivery_date: input.deliveryDate ?? null,
       fulfillment: input.fulfillment === "self_pickup" ? "self_pickup" : "delivery",
       staff_note: input.note?.trim() || null,
@@ -152,22 +162,22 @@ export async function createWalkInOrder(input: {
 
   // "Credit in the website" → deduct the total from the customer's wallet now
   // (debt allowed, mirroring the washing-charge trigger for online orders).
-  if (method === "wallet" && total > 0) {
+  if (method === "wallet" && priced > 0) {
     await admin.from("credit_transactions").insert({
       customer_id: cust.id,
-      amount_fils: -total,
+      amount_fils: -priced,
       type: "order_charge",
       order_id: order.id,
       note: `Order ${order.order_no}`,
     });
-    const { data: prof } = await admin
+    const { data: wp } = await admin
       .from("profiles")
       .select("credit_fils")
       .eq("id", cust.id)
       .single();
     await admin
       .from("profiles")
-      .update({ credit_fils: (prof?.credit_fils ?? 0) - total })
+      .update({ credit_fils: (wp?.credit_fils ?? 0) - priced })
       .eq("id", cust.id);
   }
 
@@ -187,7 +197,7 @@ export async function createWalkInOrder(input: {
       await sendReceiptFor(order.id);
       if (method === "link" && origin) {
         const payUrl = `${origin}/pay/order/${order.id}?t=${order.receipt_token}`;
-        await notifyPaymentLink(order.id, order.order_no, cust.id, payUrl, total);
+        await notifyPaymentLink(order.id, order.order_no, cust.id, payUrl, priced);
       }
     } catch {}
   });

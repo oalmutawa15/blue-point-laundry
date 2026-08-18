@@ -304,6 +304,7 @@ export type Database = {
           dispatch_late: boolean
           delivery_failed: boolean
           debt_override: boolean
+          discount_percent: number
           fulfillment: string
           id: string
           order_no: string
@@ -332,6 +333,7 @@ export type Database = {
           dispatch_late?: boolean
           delivery_failed?: boolean
           debt_override?: boolean
+          discount_percent?: number
           fulfillment?: string
           id?: string
           order_no?: string
@@ -360,6 +362,7 @@ export type Database = {
           dispatch_late?: boolean
           delivery_failed?: boolean
           debt_override?: boolean
+          discount_percent?: number
           fulfillment?: string
           id?: string
           order_no?: string
@@ -543,6 +546,7 @@ export type Database = {
         Row: {
           created_at: string
           credit_fils: number
+          discount_percent: number
           customer_no: number | null
           full_name: string | null
           id: string
@@ -556,6 +560,7 @@ export type Database = {
         Insert: {
           created_at?: string
           credit_fils?: number
+          discount_percent?: number
           customer_no?: number | null
           full_name?: string | null
           id: string
@@ -569,6 +574,7 @@ export type Database = {
         Update: {
           created_at?: string
           credit_fils?: number
+          discount_percent?: number
           customer_no?: number | null
           full_name?: string | null
           id?: string
@@ -622,6 +628,7 @@ export type Database = {
         Args: never
         Returns: {
           credit_fils: number
+          discount_percent: number
           customer_no: number
           full_name: string
           id: string

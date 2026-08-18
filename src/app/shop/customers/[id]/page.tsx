@@ -20,7 +20,7 @@ export default async function CustomerDetailPage({
     await Promise.all([
       admin
         .from("profiles")
-        .select("id, full_name, phone, credit_fils, created_at")
+        .select("id, full_name, phone, credit_fils, discount_percent, created_at")
         .eq("id", id)
         .eq("role", "customer")
         .single(),
@@ -63,6 +63,6 @@ export default async function CustomerDetailPage({
   );
 }
 
-type CustomerRow = Pick<Tables<"profiles">, "id" | "full_name" | "phone" | "credit_fils" | "created_at">;
+type CustomerRow = Pick<Tables<"profiles">, "id" | "full_name" | "phone" | "credit_fils" | "discount_percent" | "created_at">;
 type OrderRow = Pick<Tables<"orders">, "id" | "order_no" | "status" | "price_fils" | "delivery_date" | "created_at">;
 type TxnRow = Pick<Tables<"credit_transactions">, "id" | "type" | "amount_fils" | "note" | "created_at">;

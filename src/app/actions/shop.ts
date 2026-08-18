@@ -131,13 +131,31 @@ export async function saveIntake(
   const pieces = items.reduce((s, i) => s + i.qty, 0);
   const total = items.reduce((s, i) => s + i.qty * i.unit_price_fils, 0);
 
+  // Apply the customer's permanent discount (if any) to what they're charged.
+  const { data: ord } = await supabase
+    .from("orders")
+    .select("customer_id")
+    .eq("id", orderId)
+    .single();
+  let discount = 0;
+  if (ord?.customer_id) {
+    const { data: cust } = await supabase
+      .from("profiles")
+      .select("discount_percent")
+      .eq("id", ord.customer_id)
+      .single();
+    discount = cust?.discount_percent ?? 0;
+  }
+  const charged = discount > 0 ? Math.round((total * (100 - discount)) / 100) : total;
+
   // No separate "confirm payment" step: saving the price goes straight to
   // washing, which charges the customer's wallet (the DB trigger, debt allowed).
   const { error } = await supabase
     .from("orders")
     .update({
       piece_count: pieces,
-      price_fils: total,
+      price_fils: charged,
+      discount_percent: discount,
       delivery_date: deliveryDate,
       status: "washing",
     })

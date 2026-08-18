@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { getStaffProfile, emailForPhone, passwordForPhone } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizeKwPhone } from "@/lib/phone";
+import { findPackage } from "@/lib/packages";
+import { filsToKwd } from "@/lib/money";
 
 export type ShopCustomer = {
   id: string;
@@ -40,6 +42,43 @@ export async function addCustomerCredit(
     p_reference: `shop-${randomUUID()}`,
     p_note: "Shop credit",
   });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath(`/shop/customers/${customerId}`);
+  return { ok: true };
+}
+
+// Add credit to a customer's wallet using a prepaid PACKAGE — the customer pays
+// `deposit` and the wallet is credited with `credit` (deposit + bonus). The paid
+// vs. credited amounts are recorded on the transaction note. Staff only.
+export async function addCustomerPackage(
+  customerId: string,
+  depositFils: number,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!(await getStaffProfile())) return { ok: false, error: "forbidden" };
+  const pkg = findPackage(depositFils);
+  if (!pkg) return { ok: false, error: "invalid_package" };
+  const admin = createAdminClient();
+  const { error } = await admin.rpc("wallet_topup", {
+    p_customer: customerId,
+    p_amount: pkg.credit,
+    p_reference: `shop-${randomUUID()}`,
+    p_note: `Package: paid ${filsToKwd(pkg.deposit)} → received ${filsToKwd(pkg.credit)} KWD`,
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath(`/shop/customers/${customerId}`);
+  return { ok: true };
+}
+
+// Set a customer's permanent discount (%). Applied automatically when future
+// orders are priced. Staff only.
+export async function setCustomerDiscount(
+  customerId: string,
+  percent: number,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!(await getStaffProfile())) return { ok: false, error: "forbidden" };
+  const p = Math.max(0, Math.min(100, Math.round(Number(percent) || 0)));
+  const admin = createAdminClient();
+  const { error } = await admin.from("profiles").update({ discount_percent: p }).eq("id", customerId);
   if (error) return { ok: false, error: error.message };
   revalidatePath(`/shop/customers/${customerId}`);
   return { ok: true };

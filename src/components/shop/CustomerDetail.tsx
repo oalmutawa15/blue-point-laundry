@@ -8,10 +8,15 @@ import { formatMoney } from "@/lib/money";
 import { formatAddress } from "@/lib/address";
 import { OrderStatusBadge } from "@/components/customer/OrderStatusBadge";
 import { useRealtimeOrders } from "@/lib/useRealtimeOrders";
-import { addCustomerCredit } from "@/app/actions/customers";
+import { addCustomerCredit, addCustomerPackage, setCustomerDiscount } from "@/app/actions/customers";
+import { CREDIT_PACKAGES } from "@/lib/packages";
+import { filsToKwd } from "@/lib/money";
 import type { Tables } from "@/types/database";
 
-type CustomerRow = Pick<Tables<"profiles">, "id" | "full_name" | "phone" | "credit_fils" | "created_at">;
+type CustomerRow = Pick<
+  Tables<"profiles">,
+  "id" | "full_name" | "phone" | "credit_fils" | "discount_percent" | "created_at"
+>;
 type OrderRow = Pick<Tables<"orders">, "id" | "order_no" | "status" | "price_fils" | "delivery_date" | "created_at">;
 type TxnRow = Pick<Tables<"credit_transactions">, "id" | "type" | "amount_fils" | "note" | "created_at">;
 
@@ -138,6 +143,12 @@ function InfoTab({
         <WalletCard customer={customer} />
       </div>
 
+      {/* Permanent discount */}
+      <div>
+        <h2 className="mb-2 text-sm font-bold text-muted-foreground">{t.customers.discountTitle}</h2>
+        <DiscountCard customer={customer} />
+      </div>
+
       {/* Basic info */}
       <div>
         <h2 className="mb-2 text-sm font-bold text-muted-foreground">{t.customers.basicInfo}</h2>
@@ -172,21 +183,35 @@ function WalletCard({ customer }: { customer: CustomerRow }) {
   const { t, lang } = useLang();
   const router = useRouter();
   const [adding, setAdding] = useState(false);
+  const [custom, setCustom] = useState(false);
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function save() {
+  function reset() {
+    setAdding(false);
+    setCustom(false);
+    setAmount("");
+    setError(null);
+  }
+
+  async function pickPackage(depositFils: number) {
+    setBusy(true);
+    setError(null);
+    const res = await addCustomerPackage(customer.id, depositFils);
+    setBusy(false);
+    if (!res.ok) return setError(res.error);
+    reset();
+    router.refresh();
+  }
+
+  async function saveCustom() {
     setBusy(true);
     setError(null);
     const res = await addCustomerCredit(customer.id, parseFloat(amount || "0"));
     setBusy(false);
-    if (!res.ok) {
-      setError(res.error);
-      return;
-    }
-    setAdding(false);
-    setAmount("");
+    if (!res.ok) return setError(res.error);
+    reset();
     router.refresh();
   }
 
@@ -199,37 +224,139 @@ function WalletCard({ customer }: { customer: CustomerRow }) {
         </div>
         <button
           type="button"
-          onClick={() => setAdding((v) => !v)}
+          onClick={() => (adding ? reset() : setAdding(true))}
           className="flex items-center gap-1.5 rounded-xl bg-brand px-3 py-2 text-sm font-bold text-brand-foreground"
         >
           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
           {t.customers.addCredit}
         </button>
       </div>
+
       {adding && (
+        <div className="mt-3 border-t border-border pt-3">
+          {/* Prepaid packages — customer pays the deposit, receives the credit. */}
+          <p className="mb-2 text-xs font-semibold text-muted-foreground">{t.customers.choosePackage}</p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {CREDIT_PACKAGES.map((p) => (
+              <button
+                key={p.deposit}
+                type="button"
+                onClick={() => pickPackage(p.deposit)}
+                disabled={busy}
+                className="rounded-xl border border-border p-2.5 text-center transition-colors hover:border-brand disabled:opacity-50"
+              >
+                <span className="block text-sm font-extrabold text-brand">{filsToKwd(p.deposit)} د.ك</span>
+                <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                  {t.customers.getsCredit} {filsToKwd(p.credit)}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Custom amount. */}
+          {custom ? (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <input
+                value={amount}
+                onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))}
+                inputMode="decimal"
+                placeholder={t.customers.amountKwd}
+                className="w-32 rounded-lg border border-border bg-white px-3 py-2 text-sm tabular-nums outline-none focus:border-brand"
+              />
+              <button
+                type="button"
+                onClick={saveCustom}
+                disabled={busy || !amount}
+                className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-brand-foreground disabled:opacity-50"
+              >
+                {busy ? t.customers.saving : t.customers.save}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setCustom(false); setAmount(""); }}
+                className="rounded-lg border border-border px-4 py-2 text-sm font-bold"
+              >
+                {t.customers.cancel}
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setCustom(true)}
+              className="mt-3 text-sm font-bold text-brand underline"
+            >
+              {t.customers.customAmount}
+            </button>
+          )}
+          {error && <p className="mt-2 text-sm font-semibold text-danger">{error}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DiscountCard({ customer }: { customer: CustomerRow }) {
+  const { t } = useLang();
+  const router = useRouter();
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(String(customer.discount_percent ?? 0));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save() {
+    setBusy(true);
+    setError(null);
+    const res = await setCustomerDiscount(customer.id, parseInt(value || "0", 10));
+    setBusy(false);
+    if (!res.ok) return setError(res.error);
+    setEditing(false);
+    router.refresh();
+  }
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground">{t.customers.discountLabel}</p>
+          <p className="mt-1 text-2xl font-extrabold tabular-nums">{customer.discount_percent ?? 0}%</p>
+        </div>
+        {!editing && (
+          <button
+            type="button"
+            onClick={() => { setValue(String(customer.discount_percent ?? 0)); setEditing(true); }}
+            className="rounded-xl border border-border px-3 py-2 text-sm font-bold text-brand"
+          >
+            {t.common.edit}
+          </button>
+        )}
+      </div>
+      {editing && (
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
-          <input
-            value={amount}
-            onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))}
-            inputMode="decimal"
-            placeholder={t.customers.amountKwd}
-            className="w-32 rounded-lg border border-border bg-white px-3 py-2 text-sm tabular-nums outline-none focus:border-brand"
-          />
+          <div className="flex items-center gap-1">
+            <input
+              value={value}
+              onChange={(e) => setValue(e.target.value.replace(/\D/g, "").slice(0, 3))}
+              inputMode="numeric"
+              className="w-20 rounded-lg border border-border bg-white px-3 py-2 text-sm tabular-nums outline-none focus:border-brand"
+            />
+            <span className="text-sm font-bold text-muted-foreground">%</span>
+          </div>
           <button
             type="button"
             onClick={save}
-            disabled={busy || !amount}
+            disabled={busy}
             className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-brand-foreground disabled:opacity-50"
           >
             {busy ? t.customers.saving : t.customers.save}
           </button>
           <button
             type="button"
-            onClick={() => { setAdding(false); setAmount(""); setError(null); }}
+            onClick={() => { setEditing(false); setError(null); }}
             className="rounded-lg border border-border px-4 py-2 text-sm font-bold"
           >
             {t.customers.cancel}
           </button>
+          <p className="w-full text-xs text-muted-foreground">{t.customers.discountHint}</p>
           {error && <p className="w-full text-sm font-semibold text-danger">{error}</p>}
         </div>
       )}

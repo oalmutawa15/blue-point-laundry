@@ -25,7 +25,7 @@ export default async function ReceiptPage({
   const { data: order } = await admin
     .from("orders")
     .select(
-      "order_no, status, created_at, piece_count, price_fils, receipt_token, payment_method, customer:customer_id(full_name, preferences), items:order_items(service, garment, qty, unit_price_fils)",
+      "order_no, status, created_at, piece_count, price_fils, receipt_token, payment_method, discount_percent, customer:customer_id(full_name, preferences), items:order_items(service, garment, qty, unit_price_fils)",
     )
     .eq("id", id)
     .eq("receipt_token", token)
@@ -46,6 +46,7 @@ export default async function ReceiptPage({
     items: (order.items ?? []) as ReceiptData["items"],
     preferences: (customer?.preferences ?? {}) as ReceiptData["preferences"],
     paymentMethod: order.payment_method ?? null,
+    discountPercent: order.discount_percent ?? 0,
   };
 
   return (

@@ -24,6 +24,7 @@ export type ReceiptData = {
   items: ReceiptItem[];
   preferences?: Preferences;
   paymentMethod?: string | null;
+  discountPercent?: number;
 };
 
 // Bilingual label for a walk-in payment method.
@@ -38,7 +39,13 @@ const PAYMENT_LABELS: Record<string, { ar: string; en: string }> = {
 export function PublicReceipt({ data }: { data: ReceiptData }) {
   const { t, lang } = useLang();
   const date = new Date(data.createdAt).toLocaleDateString(lang === "ar" ? "ar-KW" : "en-GB");
-  const total = data.priceFils ?? data.items.reduce((s, i) => s + i.qty * i.unit_price_fils, 0);
+  const itemsSubtotal = data.items.reduce((s, i) => s + i.qty * i.unit_price_fils, 0);
+  const total = data.priceFils ?? itemsSubtotal;
+  // Items are stored at full price; price_fils is the discounted total. Show the
+  // discount line when a discount was applied and we have a pre-discount subtotal.
+  const discountPct = data.discountPercent ?? 0;
+  const showDiscount = discountPct > 0 && itemsSubtotal > total;
+  const discountAmount = itemsSubtotal - total;
 
   const prefs = data.preferences ?? {};
   const prefRows = PREF_GROUPS.map((g) => ({ label: biGroup(g), value: prefLabel(g.key, prefs[g.key]) })).filter(
@@ -115,6 +122,18 @@ export function PublicReceipt({ data }: { data: ReceiptData }) {
               label={lang === "ar" ? "طريقة الدفع" : "Payment method"}
               value={PAYMENT_LABELS[data.paymentMethod][lang]}
             />
+          )}
+          {showDiscount && (
+            <>
+              <Row
+                label={lang === "ar" ? "المجموع الفرعي" : "Subtotal"}
+                value={<span className="tabular-nums">{formatMoney(itemsSubtotal, lang)}</span>}
+              />
+              <div className="flex items-center justify-between text-success">
+                <span>{lang === "ar" ? `الخصم (${discountPct}%)` : `Discount (${discountPct}%)`}</span>
+                <span className="tabular-nums">− {formatMoney(discountAmount, lang)}</span>
+              </div>
+            </>
           )}
           <div className="flex items-center justify-between text-lg font-extrabold">
             <span>{t.publicReceipt.total}</span>
