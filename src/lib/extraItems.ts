@@ -55,23 +55,4 @@ export const EXTRA_ITEMS: ExtraItem[] = [
   { key: "besht_winter", en: "Besht (Winter)", ar: "بشت شتوي", categoryKey: "men", image: "/items/besht_winter.jpg" },
   { key: "niqab", en: "Niqab", ar: "نقاب", categoryKey: "women", image: "/items/niqab.jpg" },
   { key: "dress_special", en: "Dress Special", ar: "فستان خاص", categoryKey: "women", image: "/items/dress_special.jpg" },
-
-  // Additional missing items (no photo yet — staff set the price when adding).
-  { key: "underwear", en: "Underwear", ar: "ملابس داخلية", categoryKey: "men" },
-  { key: "socks", en: "Socks", ar: "جوارب", categoryKey: "men" },
-  { key: "abaya_special", en: "Abaya Special", ar: "عباية خاصة", categoryKey: "women" },
-  { key: "daraa_special_1", en: "Daraa special 1", ar: "دراعة خاصة ١", categoryKey: "women" },
-  { key: "sofa_cover_medium", en: "Sofa Cover (Medium)", ar: "غطاء كنبة (وسط)", categoryKey: "household" },
-  { key: "sofa_cover_small", en: "Sofa Cover (Small)", ar: "غطاء كنبة (صغير)", categoryKey: "household" },
-  { key: "pleated_skirt", en: "Pleated Skirt", ar: "تنورة بليسيه", categoryKey: "women" },
-  { key: "pleated_trouser", en: "Pleated Trouser", ar: "بنطلون بليسيه", categoryKey: "women" },
-  { key: "evening_dress", en: "Evening Dress", ar: "فستان سهرة", categoryKey: "women" },
-  { key: "trouser", en: "Trouser", ar: "بنطلون", categoryKey: "men" },
-  { key: "curtains", en: "Curtains", ar: "ستائر", categoryKey: "household" },
-  { key: "long_jacket", en: "Long Jacket", ar: "جاكيت طويل", categoryKey: "men" },
-  { key: "long_blouse", en: "Long Blouse", ar: "بلوزة طويلة", categoryKey: "women" },
-  { key: "sweater_cardigan", en: "Sweater / Cardigan", ar: "كنزة / كارديجان", categoryKey: "men" },
-  { key: "carpet", en: "Carpet", ar: "سجاد", categoryKey: "household" },
-  { key: "undershirt", en: "Undershirt", ar: "فانلة داخلية", categoryKey: "men" },
-  { key: "mukasar", en: "Mukasar", ar: "مكسّر", categoryKey: "men" },
 ];
