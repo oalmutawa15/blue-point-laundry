@@ -26,6 +26,7 @@ export function AddressForm({ onDone }: { onDone: (addressId: string) => void })
   const [label, setLabel] = useState("");
   const [areaEn, setAreaEn] = useState("");
   const [block, setBlock] = useState("");
+  const [avenue, setAvenue] = useState("");
   const [street, setStreet] = useState("");
   const [building, setBuilding] = useState("");
   const [floor, setFloor] = useState("");
@@ -34,6 +35,9 @@ export function AddressForm({ onDone }: { onDone: (addressId: string) => void })
   const [pin, setPin] = useState<{ lat: number; lng: number } | null>(null);
   const [flyTo, setFlyTo] = useState<{ lat: number; lng: number; key: number } | null>(null);
   const [locating, setLocating] = useState(false);
+  // Location must be confirmed; once confirmed the map locks and can't be moved.
+  const [confirmed, setConfirmed] = useState(false);
+  const [showReview, setShowReview] = useState(false);
 
   const [otpStage, setOtpStage] = useState(false);
   const [code, setCode] = useState("");
@@ -78,6 +82,7 @@ export function AddressForm({ onDone }: { onDone: (addressId: string) => void })
 
   // Fields changed by the user → move the map to them (debounced).
   useEffect(() => {
+    if (confirmed) return; // location is locked — never move the map
     if (source.current === "map") {
       source.current = null;
       return;
@@ -129,6 +134,7 @@ export function AddressForm({ onDone }: { onDone: (addressId: string) => void })
         label: label || undefined,
         area: areaEn,
         block: block || undefined,
+        avenue: avenue || undefined,
         street: street || undefined,
         building: building || undefined,
         floor: floor || undefined,
@@ -206,6 +212,10 @@ export function AddressForm({ onDone }: { onDone: (addressId: string) => void })
           <input value={block} onChange={(e) => edit(setBlock)(e.target.value)} inputMode="numeric" className={fieldCls} />
         </div>
         <div>
+          <label className={lbl}>{t.addresses.avenue}</label>
+          <input value={avenue} onChange={(e) => setAvenue(e.target.value)} className={fieldCls} />
+        </div>
+        <div>
           <label className={lbl}>{t.addresses.street}</label>
           <input value={street} onChange={(e) => edit(setStreet)(e.target.value)} className={fieldCls} />
         </div>
@@ -238,8 +248,10 @@ export function AddressForm({ onDone }: { onDone: (addressId: string) => void })
           <label className={lbl + " mb-0"}>{t.addresses.mapTitle}</label>
           {locating && <span className="text-xs text-muted-foreground">{t.common.loading}</span>}
         </div>
-        <LocationMap initial={pin} flyTo={flyTo} onPick={onPick} />
-        <p className="mt-1 text-xs text-muted-foreground">{t.addresses.mapHint}</p>
+        <LocationMap initial={pin} flyTo={flyTo} onPick={onPick} locked={confirmed} />
+        <p className="mt-1 text-xs text-muted-foreground">
+          {confirmed ? t.addresses.locationLockedHint : t.addresses.mapHint}
+        </p>
       </div>
 
       <textarea
@@ -252,13 +264,107 @@ export function AddressForm({ onDone }: { onDone: (addressId: string) => void })
 
       {error && <p className="text-sm text-danger">{error}</p>}
 
-      <button
-        onClick={sendCode}
-        disabled={busy}
-        className="w-full rounded-xl bg-brand px-4 py-3 text-base font-bold text-brand-foreground disabled:opacity-50"
-      >
-        {busy ? t.common.loading : t.addresses.sendCode}
-      </button>
+      {/* Confirm the location before saving. Once confirmed the map is locked. */}
+      {!confirmed ? (
+        <button
+          onClick={() => {
+            setError(null);
+            if (!areaEn) return setError(t.common.required + ": " + t.addresses.area);
+            if (!pin) return setError(t.addresses.pinRequired);
+            setShowReview(true);
+          }}
+          className="w-full rounded-xl bg-brand px-4 py-3 text-base font-bold text-brand-foreground"
+        >
+          {t.addresses.confirmLocation}
+        </button>
+      ) : (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between rounded-xl border border-success bg-success/10 px-3 py-2.5">
+            <span className="flex items-center gap-1.5 text-sm font-bold text-success">
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m20 6-11 11-5-5" /></svg>
+              {t.addresses.locationConfirmed}
+            </span>
+            <button
+              type="button"
+              onClick={() => setConfirmed(false)}
+              className="text-xs font-semibold text-brand underline"
+            >
+              {t.addresses.editLocation}
+            </button>
+          </div>
+          <button
+            onClick={sendCode}
+            disabled={busy}
+            className="w-full rounded-xl bg-brand px-4 py-3 text-base font-bold text-brand-foreground disabled:opacity-50"
+          >
+            {busy ? t.common.loading : t.addresses.sendCode}
+          </button>
+        </div>
+      )}
+
+      {/* Review pop-up: confirm all the details + the pin before locking. */}
+      {showReview && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4"
+          onClick={() => setShowReview(false)}
+        >
+          <div
+            className="max-h-[85vh] w-full max-w-md overflow-auto rounded-t-3xl bg-card p-5 shadow-xl sm:rounded-3xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-extrabold">{t.addresses.reviewTitle}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t.addresses.reviewDesc}</p>
+
+            <div className="mt-4 divide-y divide-border rounded-2xl border border-border">
+              {([
+                [t.addresses.label, label],
+                [t.addresses.area, areaEn ? areaOptions.find((o) => o.value === areaEn)?.label ?? areaEn : ""],
+                [t.addresses.block, block],
+                [t.addresses.avenue, avenue],
+                [t.addresses.street, street],
+                [t.addresses.building, building],
+                [t.addresses.floor, floor ? floorOptions.find((o) => o.value === floor)?.label ?? floor : ""],
+                [t.addresses.apartment, apartment ? num(Number(apartment)) : ""],
+                [t.addresses.directions, directions],
+              ] as [string, string][])
+                .filter(([, v]) => v && v.trim())
+                .map(([k, v]) => (
+                  <div key={k} className="flex items-start justify-between gap-3 px-4 py-2.5 text-sm">
+                    <span className="text-muted-foreground">{k}</span>
+                    <span className="text-end font-semibold">{v}</span>
+                  </div>
+                ))}
+              <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                <span className="text-muted-foreground">{t.addresses.mapTitle}</span>
+                <span className="flex items-center gap-1.5 text-end font-semibold text-success">
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11Z" /><circle cx="12" cy="10" r="2.5" /></svg>
+                  {pin ? t.addresses.pinSet : "—"}
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-5 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setShowReview(false)}
+                className="flex-1 rounded-xl border border-border px-4 py-3 text-sm font-bold text-brand"
+              >
+                {t.addresses.editDetails}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmed(true);
+                  setShowReview(false);
+                }}
+                className="flex-1 rounded-xl bg-brand px-4 py-3 text-sm font-bold text-brand-foreground"
+              >
+                {t.addresses.confirmLocation}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

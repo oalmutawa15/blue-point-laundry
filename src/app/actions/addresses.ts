@@ -11,6 +11,7 @@ export type AddressInput = {
   label?: string;
   area: string;
   block?: string;
+  avenue?: string;
   street?: string;
   building?: string;
   floor?: string;
@@ -109,6 +110,7 @@ export async function addAddress(
       label: input.label?.trim() || null,
       area: input.area.trim(),
       block: input.block?.trim() || null,
+      avenue: input.avenue?.trim() || null,
       street: input.street?.trim() || null,
       building: input.building?.trim() || null,
       floor: input.floor?.trim() || null,

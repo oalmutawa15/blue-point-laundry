@@ -53,6 +53,7 @@ export type Database = {
         Row: {
           apartment: string | null
           area: string
+          avenue: string | null
           block: string | null
           building: string | null
           contact_phone: string | null
@@ -70,6 +71,7 @@ export type Database = {
         Insert: {
           apartment?: string | null
           area: string
+          avenue?: string | null
           block?: string | null
           building?: string | null
           contact_phone?: string | null
@@ -87,6 +89,7 @@ export type Database = {
         Update: {
           apartment?: string | null
           area?: string
+          avenue?: string | null
           block?: string | null
           building?: string | null
           contact_phone?: string | null
